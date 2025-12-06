@@ -389,7 +389,6 @@ function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + tabId).classList.add('active');
-    // Highlight correct button
     const btns = document.querySelectorAll('.tab-btn');
     if(tabId === 'single') btns[0].classList.add('active');
     if(tabId === 'cross') btns[1].classList.add('active');
@@ -416,7 +415,6 @@ function updateP0FromUsd() {
     const altUsd = Number(document.getElementById('altUsd').value || 0);
     const denomUsd = Number(document.getElementById('denomUsd').value || 0);
     const p0El = document.getElementById('p0');
-    
     if(altUsd > 0 && denomUsd > 0) {
         const ratio = altUsd / denomUsd;
         p0El.value = ratio.toFixed(10); 
@@ -427,7 +425,6 @@ function updateUsdFromP0() {
     const p0 = Number(document.getElementById('p0').value || 0);
     const denomUsd = Number(document.getElementById('denomUsd').value || 0);
     const altUsdEl = document.getElementById('altUsd');
-    
     if(p0 > 0 && denomUsd > 0) {
         const val = p0 * denomUsd;
         altUsdEl.value = val.toFixed(6);
@@ -446,9 +443,8 @@ function updateAutoTargets() {
     targetMaxEl.value = tMax.toFixed(4);
 }
 
-// --- LIVE EXPOSURE (Independent Fetch) ---
+// --- LIVE EXPOSURE & PRICE FETCHING ---
 let fetchTimeout = null;
-
 async function fetchLiveExposure() {
   const assetSym = document.getElementById('assetSelect').value;
   const denomUsd = Number(document.getElementById('denomUsd').value || 0);
@@ -456,46 +452,34 @@ async function fetchLiveExposure() {
   const currentEEl = document.getElementById('currentE');
   const indEl = document.getElementById('fetchIndicator');
 
-  if(!assetSym || assetSym === "") {
-    statusEl.textContent = '';
-    return;
-  }
+  if(!assetSym || assetSym === "") { statusEl.textContent = ''; return; }
   if(denomUsd <= 0) return;
-
   if(indEl) indEl.style.display = 'block';
   
   try {
     const res = await fetch('/api/exposure');
     if (!res.ok) throw new Error(`Error ${res.status}`);
-    
     const rawData = await res.json();
     let dataList = [];
     if (Array.isArray(rawData)) { dataList = rawData; } 
     else if (typeof rawData === 'object' && rawData !== null) {
         const keys = Object.keys(rawData);
-        const looksLikeMap = keys.length > 0 && keys.every(k => k === k.toUpperCase() && k.length < 10);
-        if (looksLikeMap) {
+        if (keys.length > 0 && keys.every(k => k === k.toUpperCase() && k.length < 10)) {
             dataList = keys.map(k => ({ symbol: k, ...rawData[k] }));
-        } else if (Array.isArray(rawData.table_data)) {
-            dataList = rawData.table_data;
+        } else if (Array.isArray(rawData.table_data)) { dataList = rawData.table_data;
         } else if (Array.isArray(rawData.data)) dataList = rawData.data;
         else if (Array.isArray(rawData.positions)) dataList = rawData.positions;
         else if (Array.isArray(rawData.result)) dataList = rawData.result;
         else { dataList = [rawData]; }
     }
-
-    let found = null;
     const searchSym = assetSym.toUpperCase();
-    
-    if (dataList.length > 0) {
-        found = dataList.find(p => {
-            const s1 = (p.symbol || '').toUpperCase();
-            const s2 = (p.ticker || '').toUpperCase();
-            const s3 = (p.asset || '').toUpperCase();
-            const s4 = (p.name || '').toUpperCase(); 
-            return s1 === searchSym || s2 === searchSym || s3 === searchSym || s4.includes(searchSym);
-        });
-    }
+    const found = dataList.find(p => {
+        const s1 = (p.symbol || '').toUpperCase();
+        const s2 = (p.ticker || '').toUpperCase();
+        const s3 = (p.asset || '').toUpperCase();
+        const s4 = (p.name || '').toUpperCase(); 
+        return s1 === searchSym || s2 === searchSym || s3 === searchSym || s4.includes(searchSym);
+    });
 
     if (found) {
         const usdVal = Number(found.net_exposure_usd_from_base || 0);
@@ -513,7 +497,6 @@ async function fetchLiveExposure() {
         statusEl.textContent = `No position found for ${assetSym}.`;
         statusEl.style.color = 'var(--muted)';
     }
-
   } catch (err) {
     console.error(err);
     statusEl.textContent = `Fetch failed: ${err.message}`;
@@ -528,7 +511,6 @@ function triggerAutoFetch() {
     fetchTimeout = setTimeout(fetchLiveExposure, 500); 
 }
 
-// --- PRICE FETCHING ---
 async function fetchPriceBatch(ids) {
     if(!ids) return {};
     try {
@@ -536,10 +518,7 @@ async function fetchPriceBatch(ids) {
         const res = await fetch(url);
         if(!res.ok) throw new Error(res.statusText);
         return await res.json();
-    } catch(e) {
-        console.warn("Batch fetch failed:", e);
-        return null;
-    }
+    } catch(e) { console.warn("Batch fetch failed:", e); return null; }
 }
 
 async function autoFetchPrices(assetSym, denomSym){
@@ -549,51 +528,35 @@ async function autoFetchPrices(assetSym, denomSym){
 
   let assetId = COINGECKO_IDS[(assetSym || '').toUpperCase()];
   if (!assetId && assetSym) { assetId = assetSym.toLowerCase(); }
-
   const denomId = COINGECKO_IDS[(denomSym || '').toUpperCase()];
   const jlpId   = COINGECKO_IDS['JLP'];
   const isUsd   = (denomSym || '').toUpperCase() === 'USD';
 
-  if(!denomId && !isUsd){
-    statusEl.textContent = "Waiting for denom asset...";
-    return false;
-  }
+  if(!denomId && !isUsd){ statusEl.textContent = "Waiting for denom asset..."; return false; }
 
   try {
     if (window.location.protocol === 'file:' || window.location.protocol === 'blob:') {
       statusEl.innerHTML = '<span style="color:var(--warn)">(Live prices require Vercel)</span>';
       return false;
     }
-    
     if (isUsd) { document.getElementById('denomUsd').value = 1; }
-
     let mainIds = (!isUsd && denomId) ? denomId : '';
     if(assetId) mainIds += (mainIds ? ',' : '') + assetId;
-    
     let mainData = {};
     let success = false;
-
     if(mainIds) {
         mainData = await fetchPriceBatch(mainIds);
         if(mainData) {
             success = true;
-            if(!isUsd && mainData[denomId]?.usd) {
-                document.getElementById('denomUsd').value = mainData[denomId].usd;
-            }
-            if(assetId && mainData[assetId]?.usd) {
-                document.getElementById('altUsd').value = mainData[assetId].usd;
-            }
+            if(!isUsd && mainData[denomId]?.usd) { document.getElementById('denomUsd').value = mainData[denomId].usd; }
+            if(assetId && mainData[assetId]?.usd) { document.getElementById('altUsd').value = mainData[assetId].usd; }
         }
     } else { success = true; }
-
     if(jlpId) {
         fetchPriceBatch(jlpId).then(jlpData => {
-            if(jlpData && jlpData[jlpId]?.usd) {
-                document.getElementById('jlpUsd').value = jlpData[jlpId].usd;
-            }
+            if(jlpData && jlpData[jlpId]?.usd) { document.getElementById('jlpUsd').value = jlpData[jlpId].usd; }
         });
     }
-    
     if(success) {
         updateP0FromUsd();
         triggerAutoFetch();
@@ -601,7 +564,6 @@ async function autoFetchPrices(assetSym, denomSym){
         statusEl.style.color = 'var(--good)';
         return true;
     } else { throw new Error("Main fetch failed"); }
-
   } catch(err) {
     console.error('Price Error:', err);
     statusEl.textContent = `Price API Error. Enter Manually.`;
@@ -613,21 +575,14 @@ async function autoFetchPrices(assetSym, denomSym){
 async function loadAssetList(){
   const sel = document.getElementById('assetSelect');
   const statusEl = document.getElementById('sheetStatus');
-  if(!sel || !statusEl) {
-    statusEl.innerHTML = '<span style="color:var(--bad)">ERROR:</span> Missing elements.';
-    return;
-  }
-
+  if(!sel || !statusEl) { statusEl.innerHTML = '<span style="color:var(--bad)">ERROR:</span> Missing elements.'; return; }
   statusEl.textContent = 'Loading asset list...';
   sel.innerHTML = '<option value="">– Select asset –</option>';
-  
   try{
     const res = await fetch('/api/config');
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    
     if(data.error){ throw new Error(data.error); }
-    
     if(data.assets && Array.isArray(data.assets)){
       data.assets.forEach(sym => {
         if(sym && String(sym).trim() !== ''){
@@ -638,9 +593,7 @@ async function loadAssetList(){
         }
       });
       statusEl.textContent = `Loaded ${data.assets.length} assets.`;
-    } else {
-      statusEl.textContent = 'No assets found.';
-    }
+    } else { statusEl.textContent = 'No assets found.'; }
   }catch(err){
     console.error('Error loading asset list', err);
     statusEl.innerHTML = `<span style="color:var(--bad)">ERROR:</span> Failed to load list: ${err.message}`;
@@ -651,41 +604,30 @@ async function loadAssetConfig(symbol){
   if(!symbol) return;
   const statusEl = document.getElementById('sheetStatus');
   statusEl.textContent = `Loading config for ${symbol}...`;
-
   try{
     const [configRes, portfolioRes] = await Promise.all([
       fetch(`${APPS_SCRIPT_URL}?symbol=${encodeURIComponent(symbol)}`),
       fetch('/api/portfolio-size')
     ]);
-
     if(!configRes.ok) throw new Error(`Config HTTP ${configRes.status}`);
     const data = await configRes.json();
     if(data.error) throw new Error(data.error);
-
     let portfolioSizeUsd = null;
     if(portfolioRes.ok) {
       const portfolioData = await portfolioRes.json();
       if(portfolioData.error) { console.warn('Portfolio size API error:', portfolioData.error); } 
       else if(typeof portfolioData.portfolioSize === 'number') { portfolioSizeUsd = portfolioData.portfolioSize; }
     }
-
     if(typeof data.pmin === 'number') document.getElementById('pmin').value = data.pmin;
     if(typeof data.pmax === 'number') document.getElementById('pmax').value = data.pmax;
     if(typeof data.targetMinPct === 'number') document.getElementById('targetMinPct').value = data.targetMinPct;
     if(typeof data.targetMaxPct === 'number') document.getElementById('targetMaxPct').value = data.targetMaxPct;
-
     let denomSym = 'BTC';
     if(data.denomAsset){
       const dSel = document.getElementById('denomSelect');
-      if(dSel){
-        dSel.value = data.denomAsset;
-        updateDenomLabels(data.denomAsset);
-        denomSym = data.denomAsset;
-      }
+      if(dSel){ dSel.value = data.denomAsset; updateDenomLabels(data.denomAsset); denomSym = data.denomAsset; }
     }
-
     const success = await autoFetchPrices(symbol, denomSym);
-    
     if(portfolioSizeUsd !== null) {
       const denomUsd = Number(document.getElementById('denomUsd').value || 0);
       if(denomUsd > 0) {
@@ -693,24 +635,18 @@ async function loadAssetConfig(symbol){
         document.getElementById('portfolioSize').value = portfolioSizeInDenom.toFixed(6);
       }
     }
-    
     const currentAlt = Number(document.getElementById('altUsd').value || 0);
-    if((!success || currentAlt === 0) && typeof data.p0 === 'number') {
-       document.getElementById('p0').value = data.p0;
-       updateUsdFromP0(); 
-    }
-
+    if((!success || currentAlt === 0) && typeof data.p0 === 'number') { document.getElementById('p0').value = data.p0; updateUsdFromP0(); }
     updateAutoTargets();
     fetchLiveExposure();
     generate();
-
   }catch(err){
     console.error('Error loading config', err);
     statusEl.innerHTML = `<span style="color:var(--bad)">ERROR:</span> Failed to load ${symbol}: ${err.message}`;
   }
 }
 
-// --- CORE CALCULATION LOGIC (RESTORED) ---
+// --- CORE CALCULATION LOGIC ---
 function buildBands(pmin, pmax, p0, stepPct){
   const down = [], up = [];
   let p = p0;
@@ -734,36 +670,24 @@ function buildBands(pmin, pmax, p0, stepPct){
 
 function calculateStrategy(params, manualBands) {
   const {
-    pmin, pmax, p0, stepPct,
-    portfolioSize, targetMinPct, targetMaxPct, currentE,
-    denomSymbol, denomUsd, assetSymbol,
-    scaleMode, aprPct, maxDays, distMode
+    pmin, pmax, p0, stepPct, portfolioSize, targetMinPct, targetMaxPct, currentE,
+    denomSymbol, denomUsd, assetSymbol, scaleMode, aprPct, maxDays, distMode
   } = params;
-
   if(!manualBands && !(pmin>0 && pmax>pmin && p0>0)) return null;
-
   let bands = manualBands;
-  if (!bands) {
-    bands = buildBands(pmin, pmax, p0, stepPct);
-  }
-  
+  if (!bands) { bands = buildBands(pmin, pmax, p0, stepPct); }
   const Ndown = bands.down.length, Nup = bands.up.length;
   const targetMin = portfolioSize * targetMinPct / 100;
   const targetMax = portfolioSize * targetMaxPct / 100;
   const scaleFactorAt = (px) => (scaleMode === 'scale' && p0 > 0) ? (px/p0) : 1;
-
   const effectivePmin = (pmin > 0) ? pmin : (bands.down.length > 0 ? bands.down[bands.down.length-1].pa : 0);
   const currentAtMin = currentE * scaleFactorAt(effectivePmin);
   const needMinDelta = (targetMin - currentAtMin); 
-  
   const effectivePmax = (pmax > 0) ? pmax : (bands.up.length > 0 ? bands.up[bands.up.length-1].pb : 0);
   const currentAtMax = currentE * scaleFactorAt(effectivePmax);
   const needMoreNegativeAtMax = currentAtMax - targetMax; 
   
-  let aboveTotalScheduled = 0; 
-  let constUnitsAbove = 0; 
-  let globalL_Above = 0; 
-  
+  let aboveTotalScheduled = 0, constUnitsAbove = 0, globalL_Above = 0; 
   if (Nup > 0) {
       if (distMode === 'univ3') {
           const totalAssetUnitsNeeded = needMoreNegativeAtMax / effectivePmax;
@@ -777,18 +701,15 @@ function calculateStrategy(params, manualBands) {
           for(const b of bands.up) aboveTotalScheduled += constUnitsAbove * Math.sqrt(b.pa * b.pb);
       }
   }
-  
   let globalL_Below = 0;
   if(Ndown > 0 && distMode === 'univ3') {
       const term = Math.sqrt(p0) - Math.sqrt(effectivePmin);
       if(term > 0) globalL_Below = needMinDelta / term;
   }
-
   let holdingsAvail = Math.max(currentE, 0);
   let buyShortAllowed = (targetMax < 0);
   let holdingsUsed = 0;
   let totalReq = aboveTotalScheduled; 
-  
   if(distMode === 'univ3' && Nup > 0){
       totalReq = 0;
       for(const b of bands.up){
@@ -796,7 +717,6 @@ function calculateStrategy(params, manualBands) {
           totalReq += x_band * Math.sqrt(b.pa * b.pb);
       }
   }
-
   if(currentE > 0 && targetMax === 0){
     holdingsUsed = Math.min(totalReq, holdingsAvail);
     if(holdingsUsed < totalReq && !buyShortAllowed) totalReq = holdingsUsed; 
@@ -804,7 +724,6 @@ function calculateStrategy(params, manualBands) {
     holdingsUsed = Math.min(holdingsAvail, totalReq);
     if(!buyShortAllowed){ totalReq = holdingsUsed; }
   }
-  
   let ratio = (aboveTotalScheduled > 0) ? (totalReq / aboveTotalScheduled) : 0;
   if(distMode === 'univ3' && Nup > 0) {
       let rawSum = 0;
@@ -814,13 +733,10 @@ function calculateStrategy(params, manualBands) {
       }
       ratio = rawSum > 0 ? totalReq / rawSum : 0;
       globalL_Above *= ratio;
-  } else {
-      constUnitsAbove *= ratio;
-  }
+  } else { constUnitsAbove *= ratio; }
 
   let sumRdown = 0;
   for(const b of bands.down) sumRdown += Math.sqrt(b.pa / b.pb); 
-
   let perUsdBelow = 0;
   if(distMode !== 'univ3'){
       for(const b of bands.down){ b.r_down = Math.sqrt(b.pa / b.pb); }
@@ -828,28 +744,19 @@ function calculateStrategy(params, manualBands) {
       for(const b of bands.down) sumRdown += b.r_down;
       perUsdBelow = sumRdown>0 ? (needMinDelta / sumRdown) : 0;
   }
-
   const rows = [];
   const ordered = [...bands.down, ...bands.up];
-  
   let belowTotal = 0, cumBelowValue = 0, cumAboveSale = 0;
   let holdingsRemaining = holdingsUsed;
-  let startBuyShortPx = null, aboveTotal = 0;
-
+  let aboveTotal = 0;
   ordered.forEach((b, idx) => {
     const isDown = (b.type === 'Below');
     const rdown = isDown ? b.r_down : 0;
-    const rup = !isDown ? b.r_up : 0;
     const boundaryPx = isDown ? b.pa : b.pb;
-
     let deployUSD = 0, valueAtPa = 0, deployAltUsd = 0, saleAtPb = 0, sourceTag = '', altUnitsAbove = 0;
-
     if(isDown){
-      if(distMode === 'univ3') {
-          deployUSD = globalL_Below * (Math.sqrt(b.pb) - Math.sqrt(b.pa));
-      } else {
-          deployUSD = perUsdBelow;
-      }
+      if(distMode === 'univ3') { deployUSD = globalL_Below * (Math.sqrt(b.pb) - Math.sqrt(b.pa)); } 
+      else { deployUSD = perUsdBelow; }
       valueAtPa = deployUSD * rdown; // approx
       belowTotal += deployUSD;
       cumBelowValue += valueAtPa;
@@ -862,7 +769,6 @@ function calculateStrategy(params, manualBands) {
           altUnitsAbove = constUnitsAbove;
           deployAltUsd = altUnitsAbove * Math.sqrt(b.pa * b.pb);
        }
-
        if(aboveTotal < totalReq - 1e-12){
           aboveTotal += deployAltUsd;
           let useHold = 0;
@@ -870,34 +776,22 @@ function calculateStrategy(params, manualBands) {
             useHold = Math.min(deployAltUsd, holdingsRemaining);
             holdingsRemaining -= useHold;
             sourceTag = '<span class="tag hold">Holdings</span>';
-          } else {
-            sourceTag = '<span class="tag source">Buy+Short</span>';
-          }
+          } else { sourceTag = '<span class="tag source">Buy+Short</span>'; }
        }
     }
-    
     const baseE = currentE * scaleFactorAt(boundaryPx);
     const netAtBoundary = isDown ? (baseE + cumBelowValue) : (baseE - cumAboveSale);
-    
     rows.push({
-      bandIdx: b.origIdx || (idx + 1), 
-      pa: b.pa, pb: b.pb, type: b.type,
-      deployUSD, deployAltUsd, sourceTag,
-      altUnitsAbove: (!isDown) ? altUnitsAbove : 0, 
-      netAtBoundary
+      bandIdx: b.origIdx || (idx + 1), pa: b.pa, pb: b.pb, type: b.type,
+      deployUSD, deployAltUsd, sourceTag, altUnitsAbove: (!isDown) ? altUnitsAbove : 0, netAtBoundary
     });
   });
-
-  return {
-    rows,
-    kpi: { Ndown, Nup, belowTotal, aboveTotal: totalReq },
-    rawBands: bands 
-  };
+  return { rows, kpi: { Ndown, Nup, belowTotal, aboveTotal: totalReq }, rawBands: bands };
 }
 
 function renderLPSection(container, title, strategyData, denomSymbol, denomUsd, assetSymbol, lpId) {
   if(!strategyData) return;
-  const { rows, kpi } = strategyData;
+  const { rows } = strategyData;
   rows.sort((a, b) => a.pa - b.pa);
   let aboveAssetSum = 0, belowQuoteSum = 0, aboveDenomSum = 0, belowDenomSum = 0;
   rows.forEach(r => {
@@ -941,7 +835,6 @@ function getUnitsHeldAt(px, pmin, pmax, portSize, tMinPct, tMaxPct, mode) {
     const uMin = valMin / pmin;
     const uMax = valMax / pmax;
     const p = Math.max(pmin, Math.min(px, pmax));
-
     if (mode === 'uniform') {
         const progress = (p - pmin) / (pmax - pmin);
         const currentTargetVal = valMin + (valMax - valMin) * progress;
@@ -957,7 +850,6 @@ function getUnitsHeldAt(px, pmin, pmax, portSize, tMinPct, tMaxPct, mode) {
     return uMin;
 }
 
-// --- GENERATE FUNCTION (RESTORED) ---
 function generate() {
   const container = document.getElementById('resultsContainer');
   container.innerHTML = '';
@@ -990,7 +882,7 @@ function generate() {
   strategies.forEach(s => renderLPSection(container, s.title, s.data, s.params.denomSymbol, s.params.denomUsd, s.params.assetSymbol, s.id));
 }
 
-// --- CROSS PAIR OPTIMIZER ---
+// --- UPDATED CROSS PAIR OPTIMIZER LOGIC (Core + Overflow) ---
 const crossState = { A: null, B: null };
 
 function captureSnapshot(slot) {
@@ -1008,20 +900,17 @@ function captureSnapshot(slot) {
     
     // Calculate Target at current price
     const targetUnitsCurrent = getUnitsHeldAt(p0, pmin, pmax, portSize, tMinPct, tMaxPct, distMode);
-    const targetValUsd = targetUnitsCurrent * p0 * denomUsd; // Value in Denom * DenomPrice
+    const targetValUsd = targetUnitsCurrent * p0 * denomUsd; 
     const curValUsd = curExp * denomUsd;
 
     const snap = {
         name: asset,
-        pmin, pmax, p0,
-        denom, denomUsd,
-        targetValUsd, curValUsd,
-        targetUnitsCurrent, curExp
+        pmin, pmax, p0, denom, denomUsd,
+        targetValUsd, curValUsd, targetUnitsCurrent, curExp
     };
 
     crossState[slot] = snap;
     renderCrossCard(slot);
-    
     const statusDiv = document.getElementById('captureStatus');
     statusDiv.innerText = `Captured ${asset} as ${slot === 'A' ? 'Base (A)' : 'Quote (B)'} ✓`;
     setTimeout(() => { statusDiv.innerText = ''; }, 3000);
@@ -1034,7 +923,6 @@ function renderCrossCard(slot) {
     document.getElementById(`cpMin${slot}`).innerText = fmt(s.pmin, 6);
     document.getElementById(`cpMax${slot}`).innerText = fmt(s.pmax, 6);
     document.getElementById(`cpTgt${slot}`).innerText = `$${fmt(s.targetValUsd, 0)}`;
-    
     const curEl = document.getElementById(`cpCur${slot}`);
     curEl.innerText = `$${fmt(s.curValUsd, 0)}`;
     const diff = s.curValUsd - s.targetValUsd;
@@ -1044,26 +932,16 @@ function renderCrossCard(slot) {
 }
 
 function calculateCrossPair() {
-    if(!crossState.A || !crossState.B) {
-        alert("Please capture both Asset A (Base) and Asset B (Quote) first.");
-        return;
-    }
+    if(!crossState.A || !crossState.B) { alert("Please capture both Asset A (Base) and Asset B (Quote) first."); return; }
     
-    const A = crossState.A; // Base (e.g. SOL)
-    const B = crossState.B; // Quote (e.g. ETH)
-    
-    // Implied Price (A/B) = (P_A_BTC) / (P_B_BTC)
+    const A = crossState.A; 
+    const B = crossState.B; 
     const impPrice = A.p0 / B.p0;
-    
-    // Implied Range
-    // Min (Bearish A, Bullish B) = A_min / B_max
-    // Max (Bullish A, Bearish B) = A_max / B_min
     const impMin = A.pmin / B.pmax;
     const impMax = A.pmax / B.pmin;
     
-    // Inventory Gap
-    const gapA_USD = A.curValUsd - A.targetValUsd; // + means Excess Base
-    const gapB_USD = B.curValUsd - B.targetValUsd; // + means Excess Quote
+    const gapA_USD = A.curValUsd - A.targetValUsd; 
+    const gapB_USD = B.curValUsd - B.targetValUsd; 
     
     const resBox = document.getElementById('cpResults');
     resBox.style.display = 'block';
@@ -1074,45 +952,91 @@ function calculateCrossPair() {
     const gapStrB = gapB_USD > 0 ? `+${fmt(gapB_USD,0)}` : fmt(gapB_USD,0);
     document.getElementById('resGapUsd').innerText = `${A.name}:${gapStrA} / ${B.name}:${gapStrB}`;
     
-    let statusMsg = "";
-    let recHtml = "";
-    
-    if(gapA_USD < -100 && gapB_USD > 100) {
-        statusMsg = `Short ${A.name} / Long ${B.name} (Need to Buy ${A.name})`;
+    let statusMsg = "", recHtml = "";
+
+    // LOGIC FIX: Handle Double Surplus (Heavy Base/Heavy Quote)
+    if (gapA_USD > 100 && gapB_USD > 100) {
+        // Both are Surplus. Identify Ratio.
+        const ratio = gapA_USD / gapB_USD;
+        
+        if (ratio > 2.0) {
+            // HEAVY BASE SURPLUS (e.g. $740k SOL vs $80k ETH)
+            statusMsg = `Skewed Surplus (Heavy ${A.name})`;
+            document.getElementById('resStatus').style.color = 'var(--accent)';
+            // Core is limited by B
+            const coreValB = gapB_USD; 
+            const excessValA = gapA_USD - gapB_USD;
+            
+            recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Overflow Sell</div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">You have <b>${ratio.toFixed(1)}x</b> more excess ${A.name} than ${B.name}. A balanced LP leaves ${A.name} idle.</div>
+            <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace; margin-bottom:6px;">
+               <span style="color:var(--good)">1. Core Position (Balanced):</span><br>
+               Use all ${B.name} ($${fmt(coreValB,0)}) + Matching ${A.name} ($${fmt(coreValB,0)})<br>
+               Range: ${fmt(impMin, 5)} - ${fmt(impMax, 5)} (Safe Implied)
+            </div>
+            <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace;">
+               <span style="color:var(--accent)">2. Overflow Position (Ask-Side):</span><br>
+               Deploy remaining ${A.name} ($${fmt(excessValA,0)})<br>
+               Range: ${fmt(impPrice, 5)} - ${fmt(impMax, 5)} (Single Sided)<br>
+               <span style="color:#666; font-size:10px;">*This effectively limit-sells your excess ${A.name} if price rises.</span>
+            </div>`;
+        } else if (ratio < 0.5) {
+             // HEAVY QUOTE SURPLUS
+             statusMsg = `Skewed Surplus (Heavy ${B.name})`;
+             document.getElementById('resStatus').style.color = 'var(--good)';
+             const coreValA = gapA_USD;
+             const excessValB = gapB_USD - gapA_USD;
+             
+             recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Overflow Buy</div>
+             <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace; margin-bottom:6px;">
+               <span style="color:var(--good)">1. Core Position:</span> Use all ${A.name} ($${fmt(coreValA,0)}) + Matching ${B.name} ($${fmt(coreValA,0)}). Range: ${fmt(impMin, 5)} - ${fmt(impMax, 5)}
+             </div>
+             <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace;">
+               <span style="color:var(--good)">2. Overflow Position (Bid-Side):</span><br>
+               Deploy remaining ${B.name} ($${fmt(excessValB,0)})<br>
+               Range: ${fmt(impMin, 5)} - ${fmt(impPrice, 5)} (Single Sided)
+             </div>`;
+        } else {
+             // BALANCED SURPLUS
+             statusMsg = "Balanced Surplus (Double Sided)";
+             document.getElementById('resStatus').style.color = '#fff';
+             recHtml = `<div style="color:var(--muted); font-size:12px;">You have excess of both assets in relatively equal value. Deploy a standard wide-range LP to capture fees on this inventory.</div>
+             <div style="background:#000; padding:8px; border-radius:4px; font-family:monospace; margin-top:6px;">
+               Range: ${fmt(impMin, 5)} - ${fmt(impMax, 5)}
+             </div>`;
+        }
+    }
+    // STANDARD SCENARIOS (One Surplus, One Deficit)
+    else if(gapA_USD < -100 && gapB_USD > 100) {
+        statusMsg = `Short ${A.name} / Long ${B.name} (Rebalance)`;
         document.getElementById('resStatus').style.color = 'var(--good)';
         const surplusB_Units = gapB_USD / (B.p0 * B.denomUsd);
         const rangeTop = impPrice * 0.999;
         const rangeBot = impMin;
-        
         recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Bid-Side LP (Inventory Capture)</div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">You have excess ${B.name} and need ${A.name}. Deploy ${B.name} liquidity below current price. As price drops (or you nudge it), you buy ${A.name}.</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Deploy ${B.name} below price to buy ${A.name} on dips.</div>
         <div style="background:#000; padding:8px; border-radius:4px; font-family:monospace; color:var(--good);">
-           Pair: ${A.name} / ${B.name}<br>
-           Action: Deposit ONLY ${B.name}<br>
-           Amount: ${fmt(surplusB_Units, 4)} ${B.name} ($${fmt(gapB_USD, 0)})<br>
+           Deposit ONLY ${B.name} (${fmt(surplusB_Units, 4)})<br>
            Range: ${fmt(rangeBot, 5)} - ${fmt(rangeTop, 5)}
         </div>`;
     } 
     else if(gapA_USD > 100 && gapB_USD < -100) {
-        statusMsg = `Long ${A.name} / Short ${B.name} (Need to Sell ${A.name})`;
+        statusMsg = `Long ${A.name} / Short ${B.name} (Rebalance)`;
         document.getElementById('resStatus').style.color = 'var(--accent)';
         const surplusA_Units = gapA_USD / (A.p0 * A.denomUsd);
         const rangeBot = impPrice * 1.001; 
         const rangeTop = impMax;
-        
         recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Ask-Side LP (Distribution)</div>
-        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">You have excess ${A.name} and need ${B.name}. Deploy ${A.name} liquidity above current price. As price rises, you sell ${A.name} for ${B.name}.</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Deploy ${A.name} above price to sell ${A.name} on pumps.</div>
         <div style="background:#000; padding:8px; border-radius:4px; font-family:monospace; color:var(--accent);">
-           Pair: ${A.name} / ${B.name}<br>
-           Action: Deposit ONLY ${A.name}<br>
-           Amount: ${fmt(surplusA_Units, 4)} ${A.name} ($${fmt(gapA_USD, 0)})<br>
+           Deposit ONLY ${A.name} (${fmt(surplusA_Units, 4)})<br>
            Range: ${fmt(rangeBot, 5)} - ${fmt(rangeTop, 5)}
         </div>`;
     }
     else {
-        statusMsg = "Balanced / Ambiguous";
+        statusMsg = "Balanced / Neutral";
         document.getElementById('resStatus').style.color = 'var(--muted)';
-        recHtml = `<div style="color:var(--muted); font-size:12px;">Inventory is relatively balanced or gaps are small. Deploy standard wide-range LP if desired to capture fees, but no directional urgency.</div>`;
+        recHtml = `<div style="color:var(--muted); font-size:12px;">Inventory is relatively balanced. No directional urgency.</div>`;
     }
     
     document.getElementById('resStatus').innerText = statusMsg;
@@ -1124,7 +1048,6 @@ function calculateCrossPair() {
   const altUsdEl = document.getElementById('altUsd'), denomUsdEl = document.getElementById('denomUsd'), p0El = document.getElementById('p0');
   
   if(document.getElementById('btn')) document.getElementById('btn').addEventListener('click', generate);
-  
   document.getElementById('btnCaptureA').addEventListener('click', () => captureSnapshot('A'));
   document.getElementById('btnCaptureB').addEventListener('click', () => captureSnapshot('B'));
   document.getElementById('btnCalcCross').addEventListener('click', calculateCrossPair);
@@ -1138,13 +1061,10 @@ function calculateCrossPair() {
       updateDenomLabels(denomSel.value);
       autoFetchPrices(assetSel ? assetSel.value : '', denomSel.value);
   });
-  
-  // Auto-update Targets on Input Change
   ['portfolioSize', 'targetMinPct', 'targetMaxPct'].forEach(id => {
       const el = document.getElementById(id);
       if(el) el.addEventListener('input', updateAutoTargets);
   });
-
   loadAssetList();
   if (denomSel) autoFetchPrices('', denomSel.value);
 })();
