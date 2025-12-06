@@ -882,7 +882,7 @@ function generate() {
   strategies.forEach(s => renderLPSection(container, s.title, s.data, s.params.denomSymbol, s.params.denomUsd, s.params.assetSymbol, s.id));
 }
 
-// --- UPDATED CROSS PAIR OPTIMIZER LOGIC (Core + Overflow) ---
+// --- UPDATED CROSS PAIR OPTIMIZER LOGIC (Core + Overflow + Tight) ---
 const crossState = { A: null, B: null };
 
 function captureSnapshot(slot) {
@@ -960,15 +960,17 @@ function calculateCrossPair() {
         const ratio = gapA_USD / gapB_USD;
         
         if (ratio > 2.0) {
-            // HEAVY BASE SURPLUS (e.g. $740k SOL vs $80k ETH)
+            // HEAVY BASE SURPLUS
             statusMsg = `Skewed Surplus (Heavy ${A.name})`;
             document.getElementById('resStatus').style.color = 'var(--accent)';
             // Core is limited by B
             const coreValB = gapB_USD; 
             const excessValA = gapA_USD - gapB_USD;
-            
-            recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Overflow Sell</div>
-            <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">You have <b>${ratio.toFixed(1)}x</b> more excess ${A.name} than ${B.name}. A balanced LP leaves ${A.name} idle.</div>
+            // TIGHT RANGE (Rebalance)
+            const overflowTop = impPrice * 1.01; // 1% range for rapid fill
+
+            recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Concentrated Sell</div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Excess ${A.name} found. Recommendation: "Limit Sell" via tight CL range.</div>
             <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace; margin-bottom:6px;">
                <span style="color:var(--good)">1. Core Position (Balanced):</span><br>
                Use all ${B.name} ($${fmt(coreValB,0)}) + Matching ${A.name} ($${fmt(coreValB,0)})<br>
@@ -977,8 +979,8 @@ function calculateCrossPair() {
             <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace;">
                <span style="color:var(--accent)">2. Overflow Position (Ask-Side):</span><br>
                Deploy remaining ${A.name} ($${fmt(excessValA,0)})<br>
-               Range: ${fmt(impPrice, 5)} - ${fmt(impMax, 5)} (Single Sided)<br>
-               <span style="color:#666; font-size:10px;">*This effectively limit-sells your excess ${A.name} if price rises.</span>
+               Range: ${fmt(impPrice, 5)} - ${fmt(overflowTop, 5)} (Tight 1%)<br>
+               <span style="color:#666; font-size:10px;">*Replaces limit order. Sells immediately if price ticks up.</span>
             </div>`;
         } else if (ratio < 0.5) {
              // HEAVY QUOTE SURPLUS
@@ -986,15 +988,16 @@ function calculateCrossPair() {
              document.getElementById('resStatus').style.color = 'var(--good)';
              const coreValA = gapA_USD;
              const excessValB = gapB_USD - gapA_USD;
-             
-             recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Overflow Buy</div>
+             const overflowBot = impPrice * 0.99; // 1% range down
+
+             recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Core LP + Concentrated Buy</div>
              <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace; margin-bottom:6px;">
                <span style="color:var(--good)">1. Core Position:</span> Use all ${A.name} ($${fmt(coreValA,0)}) + Matching ${B.name} ($${fmt(coreValA,0)}). Range: ${fmt(impMin, 5)} - ${fmt(impMax, 5)}
              </div>
              <div style="background:#0e1621; padding:10px; border-radius:4px; font-family:monospace;">
                <span style="color:var(--good)">2. Overflow Position (Bid-Side):</span><br>
                Deploy remaining ${B.name} ($${fmt(excessValB,0)})<br>
-               Range: ${fmt(impMin, 5)} - ${fmt(impPrice, 5)} (Single Sided)
+               Range: ${fmt(overflowBot, 5)} - ${fmt(impPrice, 5)} (Tight 1%)
              </div>`;
         } else {
              // BALANCED SURPLUS
@@ -1012,11 +1015,11 @@ function calculateCrossPair() {
         document.getElementById('resStatus').style.color = 'var(--good)';
         const surplusB_Units = gapB_USD / (B.p0 * B.denomUsd);
         const rangeTop = impPrice * 0.999;
-        const rangeBot = impMin;
+        const rangeBot = impMin; // Can stay wide or tighten based on preference
         recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Bid-Side LP (Inventory Capture)</div>
         <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Deploy ${B.name} below price to buy ${A.name} on dips.</div>
         <div style="background:#000; padding:8px; border-radius:4px; font-family:monospace; color:var(--good);">
-           Deposit ONLY ${B.name} (${fmt(surplusB_Units, 4)})<br>
+           Deposit ONLY ${B.name} ${fmt(surplusB_Units, 4)} ($${fmt(gapB_USD, 0)})<br>
            Range: ${fmt(rangeBot, 5)} - ${fmt(rangeTop, 5)}
         </div>`;
     } 
@@ -1029,7 +1032,7 @@ function calculateCrossPair() {
         recHtml = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Ask-Side LP (Distribution)</div>
         <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">Deploy ${A.name} above price to sell ${A.name} on pumps.</div>
         <div style="background:#000; padding:8px; border-radius:4px; font-family:monospace; color:var(--accent);">
-           Deposit ONLY ${A.name} (${fmt(surplusA_Units, 4)})<br>
+           Deposit ONLY ${A.name} ${fmt(surplusA_Units, 4)} ($${fmt(gapA_USD, 0)})<br>
            Range: ${fmt(rangeBot, 5)} - ${fmt(rangeTop, 5)}
         </div>`;
     }
