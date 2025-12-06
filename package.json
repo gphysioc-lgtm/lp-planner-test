@@ -1,0 +1,6 @@
+{
+  "name": "lp-planner-proxy",
+  "version": "1.0.0",
+  "main": "api/price.js",
+  "dependencies": {}
+}
