@@ -331,7 +331,7 @@
                     <span id="cpNameA" style="font-weight:bold; color:var(--ink);">--</span>
                 </div>
                 <div class="row2">
-                    <div><span class="cp-label">Surplus (USD)</span><div class="cp-val" id="cpSurplusA">--</div></div>
+                    <div><span class="cp-label">Available (USD)</span><div class="cp-val" id="cpSurplusA">--</div></div>
                     <div><span class="cp-label">Target Inv</span><div class="cp-val" id="cpTgtA">--</div></div>
                     <div><span class="cp-label">Current Inv</span><div class="cp-val" id="cpCurA">--</div></div>
                 </div>
@@ -342,7 +342,7 @@
                     <span id="cpNameB" style="font-weight:bold; color:var(--ink);">--</span>
                 </div>
                  <div class="row2">
-                    <div><span class="cp-label">Surplus (USD)</span><div class="cp-val" id="cpSurplusB">--</div></div>
+                    <div><span class="cp-label">Available (USD)</span><div class="cp-val" id="cpSurplusB">--</div></div>
                     <div><span class="cp-label">Target Inv</span><div class="cp-val" id="cpTgtB">--</div></div>
                     <div><span class="cp-label">Current Inv</span><div class="cp-val" id="cpCurB">--</div></div>
                 </div>
@@ -375,6 +375,7 @@
                     </div>
                     <div style="flex:1; position:relative; min-height:200px;">
                         <canvas id="crossPriceChart"></canvas>
+                        <div id="chartStatus" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--warn); font-size:11px; display:none;"></div>
                     </div>
                  </div>
              </div>
@@ -383,7 +384,7 @@
                 <div class="summary-row">
                      <div class="summary-item"><label>Implied Price</label><div id="resImpPrice" style="color:var(--accent);">--</div></div>
                      <div class="summary-item"><label>Implied Range (±3%)</label><div id="resImpRange">--</div></div>
-                     <div class="summary-item"><label>Gap (USD)</label><div id="resGapUsd">--</div></div>
+                     <div class="summary-item"><label>Available Inv (USD)</label><div id="resGapUsd">--</div></div>
                      <div class="summary-item"><label>Strategy</label><div id="resStatus" style="font-weight:bold;">--</div></div>
                 </div>
              </div>
@@ -921,7 +922,7 @@ function generate() {
   const assetSymbol = (document.getElementById('assetSelect').value || 'ALT').toUpperCase();
   const denomSymbol = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
   
-  const baseParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol, denomUsd: Number(document.getElementById('denomUsd').value), assetSymbol, scaleMode: document.getElementById('scaleMode').value, aprPct: 0, maxDays: 0, distMode };
+  const baseParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol: denomSym, denomUsd: Number(document.getElementById('denomUsd').value), assetSymbol, scaleMode: document.getElementById('scaleMode').value, aprPct: 0, maxDays: 0, distMode };
   strategies.push({ title: isDual?`LP 1 (${capitalRatio}x)`:`Schedule`, id: 'lp1', params: baseParams });
      
   if(isDual) {
@@ -949,6 +950,7 @@ function captureSnapshot(slot) {
     const denomUsd = Number(document.getElementById('denomUsd').value) || 1;
     const distMode = document.getElementById('distMode').value;
     const stepPct = Number(document.getElementById('intervalPct').value);
+    const altUsdInput = Number(document.getElementById('altUsd').value) || 0;
     
     // Store curve data for charting
     const points = [];
@@ -963,11 +965,17 @@ function captureSnapshot(slot) {
     const targetUnitsCurrent = getUnitsHeldAt(p0, pmin, pmax, portSize, tMinPct, tMaxPct, distMode);
     const targetValUsd = targetUnitsCurrent * p0 * denomUsd; 
     const curValUsd = curExp * denomUsd;
-    const usdPrice = document.getElementById('altUsd').value || 0;
+    
+    // Ensure we capture USD Price. Fallback if input is missing.
+    let finalUsdPrice = altUsdInput;
+    if(finalUsdPrice <= 0 && p0 > 0 && denomUsd > 0) {
+        finalUsdPrice = p0 * denomUsd; 
+    }
 
     const snap = {
         name: asset,
-        pmin, pmax, p0, denom, denomUsd, usdPrice,
+        pmin, pmax, p0, denom, denomUsd, 
+        usdPrice: finalUsdPrice,
         targetValUsd, curValUsd, targetUnitsCurrent, curExp,
         curvePoints: points
     };
@@ -984,11 +992,17 @@ function renderCrossCard(slot) {
     if(!s) return;
     document.getElementById(`cpName${slot}`).innerText = s.name;
     
-    const surplus = s.curValUsd - s.targetValUsd;
-    const surplusEl = document.getElementById(`cpSurplus${slot}`);
-    surplusEl.innerText = (surplus>0?'+':'') + `$${fmt(surplus, 0)}`;
-    surplusEl.style.color = surplus > 0 ? 'var(--accent)' : 'var(--ink)';
+    // Changed "Surplus" label to "Available Value" to reflect we use the full amount
+    const valEl = document.getElementById(`cpSurplus${slot}`);
+    if(valEl) {
+        valEl.innerText = `$${fmt(s.curValUsd, 0)}`;
+        valEl.style.color = 'var(--ink)';
+    }
     
+    // Update label text if needed, but for now just value
+    const labelEl = valEl.previousElementSibling;
+    if(labelEl) labelEl.innerText = "Available (USD)";
+
     document.getElementById(`cpTgt${slot}`).innerText = `$${fmt(s.targetValUsd, 0)}`;
     document.getElementById(`cpCur${slot}`).innerText = `$${fmt(s.curValUsd, 0)}`;
 }
@@ -1028,12 +1042,14 @@ function calculateCrossPair() {
     
     const A = crossState.A; 
     const B = crossState.B; 
+    
+    // Safety check for USD prices
+    if(A.usdPrice <= 0) A.usdPrice = (A.p0 * A.denomUsd) || 1;
+    if(B.usdPrice <= 0) B.usdPrice = (B.p0 * B.denomUsd) || 1;
+
     const impPrice = (Number(A.usdPrice) / Number(B.usdPrice));
     const impMin = A.pmin / B.pmax;
     const impMax = A.pmax / B.pmin;
-    
-    const gapA_USD = A.curValUsd - A.targetValUsd; 
-    const gapB_USD = B.curValUsd - B.targetValUsd; 
     
     // 1. Show Visuals
     document.getElementById('cpResults').style.display = 'block';
@@ -1045,39 +1061,43 @@ function calculateCrossPair() {
     renderSmallExposureChart('chartA_Exp', A, '#5bb0ff');
     renderSmallExposureChart('chartB_Exp', B, '#17c964');
     
-    // 3. Render History
+    // 3. Render History (Default 30d)
     updateCrossHistory('30');
     
     // 4. Stats
     document.getElementById('resImpPrice').innerText = fmt(impPrice, 6) + ` ${B.name}`;
     document.getElementById('resImpRange').innerText = `${fmt(impMin, 5)} - ${fmt(impMax, 5)}`;
     
-    const gapStrA = gapA_USD > 0 ? `+${fmt(gapA_USD,0)}` : fmt(gapA_USD,0);
-    const gapStrB = gapB_USD > 0 ? `+${fmt(gapB_USD,0)}` : fmt(gapB_USD,0);
-    document.getElementById('resGapUsd').innerText = `${A.name}:${gapStrA} / ${B.name}:${gapStrB}`;
+    // Use Total Available Value (Indifference Logic)
+    const totalA_USD = A.curValUsd; 
+    const totalB_USD = B.curValUsd; 
     
-    // 5. Strategy & Schedule Logic (+EV Indifference)
-    let surplusA = Math.max(0, gapA_USD);
-    let surplusB = Math.max(0, gapB_USD);
+    document.getElementById('resGapUsd').innerText = `${A.name}: $${fmt(totalA_USD,0)} / ${B.name}: $${fmt(totalB_USD,0)}`;
+    
+    // 5. Strategy & Schedule Logic (Inventory Weighted)
+    // Use Available Capital regardless of Target ("Indifferent" to holding)
+    let availA = Math.max(0, totalA_USD);
+    let availB = Math.max(0, totalB_USD);
     
     let bias = 'balanced';
     let statusMsg = "Balanced Deployment";
     let color = "#fff";
     let recHtml = "";
     
-    const ratio = (surplusB > 0) ? surplusA / surplusB : (surplusA > 0 ? 999 : 1);
+    const ratio = (availB > 0) ? availA / availB : (availA > 0 ? 999 : 1);
     
-    if (surplusA > 100 && surplusB > 100) {
-        if (ratio > 1.2) { 
+    // Logic: Identify heavy side based on total holdings
+    if (availA > 100 && availB > 100) {
+        if (ratio > 1.25) { 
             bias = 'sell'; 
-            statusMsg = `Surplus Skewed: Heavy ${A.name}`; 
+            statusMsg = `Inventory Skewed: Heavy ${A.name}`; 
             color = 'var(--accent)';
-            recHtml = `<div style="color:var(--muted)">You have more ${A.name} than ${B.name}. The schedule below allocates the extra ${A.name} to the upper bands (Ask Side) to capture fees while scaling out.</div>`;
+            recHtml = `<div style="color:var(--muted)">You hold more ${A.name} than ${B.name}. The schedule below allocates the extra ${A.name} to the upper bands (Ask Side) to capture fees while scaling out.</div>`;
         } else if (ratio < 0.8) { 
             bias = 'buy'; 
-            statusMsg = `Surplus Skewed: Heavy ${B.name}`; 
+            statusMsg = `Inventory Skewed: Heavy ${B.name}`; 
             color = 'var(--good)';
-            recHtml = `<div style="color:var(--muted)">You have more ${B.name} than ${A.name}. The schedule below allocates the extra ${B.name} to the lower bands (Bid Side) to capture fees while acquiring ${A.name} on dips.</div>`;
+            recHtml = `<div style="color:var(--muted)">You hold more ${B.name} than ${A.name}. The schedule below allocates the extra ${B.name} to the lower bands (Bid Side) to capture fees while acquiring ${A.name} on dips.</div>`;
         } else {
             recHtml = `<div style="color:var(--muted)">Balanced Inventory. Distributing evenly across ±3% range for maximum fee capture.</div>`;
         }
@@ -1089,46 +1109,47 @@ function calculateCrossPair() {
     document.getElementById('resStatus').style.color = color;
     document.getElementById('recBox').innerHTML = recHtml;
     
-    generateCrossSchedule(impPrice, surplusA, surplusB, bias, A.name, B.name);
+    generateCrossSchedule(impPrice, availA, availB, bias, A.name, B.name);
 }
 
 function generateCrossSchedule(centerPrice, usd_A, usd_B, bias, symA, symB) {
     const tbody = document.querySelector('#crossTable tbody');
     tbody.innerHTML = '';
     
-    let matchedVal = Math.min(usd_A, usd_B);
-    let excessA = Math.max(0, usd_A - usd_B);
-    let excessB = Math.max(0, usd_B - usd_A);
+    const bandsAbove = 3;
+    const bandsBelow = 3;
     
-    if (matchedVal < 100) { matchedVal = 0; excessA = usd_A; excessB = usd_B; }
+    // Logic: Full Deployment.
+    // Distribute Total A across 3 upper bands.
+    // Distribute Total B across 3 lower bands.
+    // This naturally handles skew. If A >> B, upper bands are heavy. If A = B, it's balanced.
+    
+    const perBandA = usd_A / bandsAbove; 
+    const perBandB = usd_B / bandsBelow;    
     
     const bands = [
         { pct: -3, type: 'Below' }, { pct: -2, type: 'Below' }, { pct: -1, type: 'Below' },
         { pct: 0, type: 'Above' }, { pct: 1, type: 'Above' }, { pct: 2, type: 'Above' }
     ];
     
-    const perBandMatched = matchedVal / 6;
-    const perBandExcessA = excessA / 3; 
-    const perBandExcessB = excessB / 3; 
-    
+    const priceA_USD = Number(crossState.A.usdPrice) || 1;
+    const priceB_USD = Number(crossState.B.usdPrice) || 1;
+
+    let rows = '';
     bands.forEach(b => {
         const pStart = centerPrice * (1 + b.pct/100);
         const pEnd = centerPrice * (1 + (b.pct+1)/100);
         
-        let allocUsd = perBandMatched;
-        if (b.type === 'Above') allocUsd += perBandExcessA;
-        if (b.type === 'Below') allocUsd += perBandExcessB;
+        // Above = Sell Base (Uses A). Below = Buy Base (Uses B).
+        let allocUsd = (b.type === 'Above') ? perBandA : perBandB;
         
-        if (allocUsd < 1) return; 
+        // Ensure we display even small amounts if they are non-zero
+        if (allocUsd < 0.01) return; 
         
-        let amtA = 0, amtB = 0;
-        const priceA_USD = Number(crossState.A.usdPrice);
-        const priceB_USD = Number(crossState.B.usdPrice);
-        
+        let tokenStr = '';
         const rowColor = b.type === 'Below' ? 'var(--good)' : 'var(--accent)';
         const arrow = b.type === 'Below' ? '↓' : '↑';
         
-        let tokenStr = '';
         if(b.type === 'Below') {
             const tokenAmt = allocUsd / priceB_USD;
             tokenStr = `<td>-</td><td style="font-weight:600; color:${rowColor}">${fmt(tokenAmt, 4)} ${symB}</td>`;
@@ -1137,63 +1158,89 @@ function generateCrossSchedule(centerPrice, usd_A, usd_B, bias, symA, symB) {
             tokenStr = `<td style="font-weight:600; color:${rowColor}">${fmt(tokenAmt, 4)} ${symA}</td><td>-</td>`;
         }
 
-        const row = `<tr>
+        rows += `<tr>
             <td style="color:${rowColor}">${arrow} ${Math.abs(b.pct)}%</td>
             <td>${fmt(pStart, 6)} - ${fmt(pEnd, 6)}</td>
             <td style="color:${rowColor}">${b.type}</td>
             ${tokenStr}
             <td style="color:#aaa">$${fmt(allocUsd, 2)}</td>
         </tr>`;
-        tbody.innerHTML += row;
     });
+    
+    if(rows === '') rows = '<tr><td colspan="5" style="text-align:center; color:var(--muted); padding:12px;">No deployable capital found. Check "Capture Base/Quote" inputs.</td></tr>';
+    tbody.innerHTML = rows;
 }
 
-// --- CROSS CHART HISTORY ---
+// --- CROSS CHART HISTORY (Robust Neighbor Match) ---
 async function updateCrossHistory(days) {
     if(!crossState.A || !crossState.B) return;
     
-    document.querySelectorAll('#crossVisuals .time-btns button').forEach(b => {
+    document.querySelectorAll('.time-btns button').forEach(b => {
         b.classList.remove('active');
         if(b.textContent.toLowerCase().includes(days === '30' ? '1m' : (days === '365' ? '1y' : 'max'))) b.classList.add('active');
     });
 
-    const idA = COINGECKO_IDS[crossState.A.name.toUpperCase()] || crossState.A.name.toLowerCase();
-    const idB = COINGECKO_IDS[crossState.B.name.toUpperCase()] || crossState.B.name.toLowerCase();
+    let idA = COINGECKO_IDS[crossState.A.name.toUpperCase()] || crossState.A.name.toLowerCase();
+    let idB = COINGECKO_IDS[crossState.B.name.toUpperCase()] || crossState.B.name.toLowerCase();
     
-    // Use robust fallback logic
-    const getUrl = (id, d) => {
-        if(window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
-            return `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${d}`;
-        }
-        return `/api/history?id=${id}&days=${d}`;
-    };
+    // Explicit Fix for BNB if missed
+    if(crossState.B.name.toUpperCase() === 'BNB') idB = 'binancecoin';
+    if(crossState.A.name.toUpperCase() === 'BNB') idA = 'binancecoin';
+
+    const getUrl = (id, d) => (window.location.hostname === 'localhost' || window.location.protocol === 'file:') ? 
+        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${d}` : 
+        `/api/history?id=${id}&days=${d}`;
     
     try {
         const [resA, resB] = await Promise.all([fetch(getUrl(idA, days)), fetch(getUrl(idB, days))]);
         const dataA = await resA.json();
         const dataB = await resB.json();
         
-        if(!dataA.prices || !dataB.prices) throw new Error("Missing history");
+        if(!dataA.prices || !dataB.prices) throw new Error("Missing history data");
         
         const crossPoints = [];
-        const bMap = new Map();
-        // Round to nearest hour to ensure matches (CoinGecko data varies in granularity)
-        const roundTime = (t) => Math.round(t / 3600000) * 3600000;
+        const bPrices = dataB.prices; // Array of [timestamp, price]
         
-        dataB.prices.forEach(p => bMap.set(roundTime(p[0]), p[1]));
-
+        // Efficient Nearest Neighbor Matching
+        // This fixes "Blank Chart" when timestamps don't align perfectly
         dataA.prices.forEach(ptA => {
-             const k = roundTime(ptA[0]);
-             let valB = bMap.get(k);
-             // If exact match fails, check neighbors (1 hr)
-             if(!valB) valB = bMap.get(k - 3600000) || bMap.get(k + 3600000);
+             const tA = ptA[0];
+             const pA = ptA[1];
              
-             if(valB) crossPoints.push({ x: ptA[0], y: ptA[1] / valB });
+             // Find closest point in B
+             // Since arrays are sorted, we could optimize, but simple search is robust for small arrays
+             let bestB = null;
+             let minDiff = Infinity;
+             
+             // Optimized search: Assuming similar density
+             // We search the whole B array to be safe against missing data gaps
+             for(let i=0; i<bPrices.length; i++) {
+                 const diff = Math.abs(bPrices[i][0] - tA);
+                 if(diff < minDiff) {
+                     minDiff = diff;
+                     bestB = bPrices[i][1];
+                 }
+             }
+             
+             // Tolerance: 24 hours (handles daily vs hourly mismatch)
+             if(bestB && minDiff < 86400000) {
+                 crossPoints.push({ x: tA, y: pA / bestB });
+             }
         });
         
-        renderCrossPriceChart(crossPoints, crossState.A.name, crossState.B.name);
+        if(crossPoints.length > 0) {
+            document.getElementById('chartStatus').style.display = 'none';
+            renderCrossPriceChart(crossPoints, crossState.A.name, crossState.B.name);
+        } else {
+             throw new Error("No overlapping data");
+        }
         
-    } catch(e) { console.warn("Cross History Error", e); }
+    } catch(e) { 
+        console.warn("Cross History Error", e);
+        const chartStatus = document.getElementById('chartStatus');
+        chartStatus.innerText = "Data Unavailable (API Limit/CORS)";
+        chartStatus.style.display = 'block';
+    }
 }
 
 function renderCrossPriceChart(data, symA, symB) {
@@ -1229,12 +1276,10 @@ function renderCrossPriceChart(data, symA, symB) {
 }
 
 // --- SINGLE CHART FUNCTIONS ---
-
 function renderExposureChart(rows, denomSym, assetSym, p0) {
     const canvasId = 'exposureChart';
     const oldCanvas = document.getElementById(canvasId);
     if(!oldCanvas) return;
-    
     const labels = rows.map(r => r.pricePair);
     const dataExp = rows.map(r => r.expPct);
     const dataUsdPrice = rows.map(r => r.priceUsd);
@@ -1287,7 +1332,6 @@ async function fetchAndRenderHistory(days, pmin, pmax, portfolioSize, targetMinP
     container.innerHTML = `<div style="color:var(--muted); padding:20px; text-align:center;">Fetching ${days}-day history...</div>`;
     let assetId = COINGECKO_IDS[assetSym] || assetSym.toLowerCase();
     
-    // Robust fallback
     const getUrl = (id, d) => (window.location.hostname === 'localhost' || window.location.protocol === 'file:') ? `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${d}` : `/api/history?id=${id}&days=${d}`;
     
     let prices = [];
@@ -1432,7 +1476,7 @@ function generatePnLSchedule() {
   const isJlpMode = document.getElementById('jlpStrategyMode').checked;
   let capitalRatio = isDual ? (Number(document.getElementById('dualMult').value) || 0.5) : (isJlpMode ? 0.5 : 1.0);
   
-  const strategyParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol: denomSym, denomUsd, assetSymbol: assetSym, scaleMode, aprPct: 0, maxDays: 0, distMode };
+  const strategyParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol: denomSym, denomUsd, assetSymbol: assetSym, scaleMode: document.getElementById('scaleMode').value, aprPct: 0, maxDays: 0, distMode };
   const stratData = calculateStrategy(strategyParams);
   if (!stratData || !stratData.kpi) return;
   
