@@ -377,7 +377,7 @@
                     </div>
                     <div style="flex:1; position:relative; min-height:200px;">
                         <canvas id="crossPriceChart"></canvas>
-                        <div id="chartStatus" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--warn); font-size:11px; display:none;">Loading...</div>
+                        <div id="chartStatus" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--warn); font-size:11px; display:none; text-align:center; background:#000000aa; padding:4px 8px; border-radius:4px;}"></div>
                     </div>
                  </div>
              </div>
@@ -463,18 +463,6 @@ function updateDenomLabels(sym){
   document.querySelectorAll('.denomLabelShort').forEach(el => { el.textContent = s; });
 }
 
-// --- SAFE API FETCHING (With Fallback) ---
-async function safeFetch(url, options={}) {
-    try {
-        const res = await fetch(url, options);
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-    } catch(e) {
-        console.warn(`Fetch Failed for ${url}:`, e);
-        return { error: e.message };
-    }
-}
-
 // --- SYNC FUNCTIONS (Bi-Directional) ---
 function updateP0FromUsd() {
     const altUsd = Number(document.getElementById('altUsd').value || 0);
@@ -515,12 +503,22 @@ async function fetchPriceBatch(ids) {
     const internalUrl = `/api/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`;
     const directUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`;
     
-    let data = await safeFetch(internalUrl);
-    if(data.error) {
-        // Fallback
-        data = await safeFetch(directUrl);
+    let data = null;
+    try {
+        // If local file, don't try internal API to avoid 404 delay
+        if(window.location.protocol !== 'file:') {
+             const res = await fetch(internalUrl);
+             if(res.ok) data = await res.json();
+        }
+    } catch(e) {}
+    
+    if(!data) {
+         try {
+             const res = await fetch(directUrl);
+             if(res.ok) data = await res.json();
+         } catch(e) {}
     }
-    return data && !data.error ? data : null;
+    return data;
 }
 
 async function autoFetchPrices(assetSym, denomSym){
@@ -571,14 +569,25 @@ async function loadAssetList(){
   statusEl.textContent = 'Loading asset list...';
   sel.innerHTML = '<option value="">– Select asset –</option>';
   
-  const data = await safeFetch('/api/config');
-  if(!data.error && data.assets && Array.isArray(data.assets)){
-      data.assets.forEach(sym => {
-        if(sym){ const opt = document.createElement('option'); opt.value = String(sym).trim(); opt.textContent = String(sym).trim(); sel.appendChild(opt); }
-      });
-      statusEl.textContent = `Loaded ${data.assets.length} assets.`;
-  } else {
-      statusEl.innerHTML = '<span style="color:var(--warn)">Running in Client Mode (No Asset Config)</span>';
+  try {
+      const res = await fetch('/api/config');
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if(data.error){ throw new Error(data.error); }
+      if(data.assets && Array.isArray(data.assets)){
+          data.assets.forEach(sym => {
+            if(sym && String(sym).trim() !== ''){
+              const opt = document.createElement('option');
+              opt.value = String(sym).trim();
+              opt.textContent = String(sym).trim();
+              sel.appendChild(opt);
+            }
+          });
+          statusEl.textContent = `Loaded ${data.assets.length} assets.`;
+      } else { statusEl.textContent = 'No assets found.'; }
+  } catch(err) {
+      console.warn("Config load failed", err);
+      statusEl.innerHTML = `<span style="color:var(--warn)">Running in Client Mode (No Asset Config)</span>`;
   }
 }
 
@@ -587,56 +596,59 @@ async function loadAssetConfig(symbol){
   const statusEl = document.getElementById('sheetStatus');
   statusEl.textContent = `Loading config for ${symbol}...`;
   
-  // FIX 1: Declare variable OUTSIDE try block to prevent "ReferenceError"
+  // FIX: Declare variable OUTSIDE try block to prevent "ReferenceError" if fetch fails
   let denomSym = 'BTC'; 
   
-  // Safe Parallel Loading (Independent Failures)
-  const configPromise = safeFetch(`${APPS_SCRIPT_URL}?symbol=${encodeURIComponent(symbol)}`);
-  const portfolioPromise = safeFetch('/api/portfolio-size');
-  
-  const [data, portfolioData] = await Promise.all([configPromise, portfolioPromise]);
+  try {
+      // Safe Parallel Loading (Independent Failures)
+      const configPromise = fetch(`${APPS_SCRIPT_URL}?symbol=${encodeURIComponent(symbol)}`);
+      const portfolioPromise = fetch('/api/portfolio-size');
+      
+      const [configRes, portfolioRes] = await Promise.all([configPromise, portfolioPromise]);
 
-  if(data.error) {
-       statusEl.textContent = `Config unavailable for ${symbol}. Using defaults.`;
-       statusEl.style.color = 'var(--warn)';
-       // Do not crash, just continue with defaults
-       autoFetchPrices(symbol, 'BTC');
-       return;
-  }
+      if(configRes.ok) {
+          const data = await configRes.json();
+          if(!data.error) {
+              // Populate Config
+              if(typeof data.pmin === 'number') document.getElementById('pmin').value = data.pmin;
+              if(typeof data.pmax === 'number') document.getElementById('pmax').value = data.pmax;
+              if(typeof data.targetMinPct === 'number') document.getElementById('targetMinPct').value = data.targetMinPct;
+              if(typeof data.targetMaxPct === 'number') document.getElementById('targetMaxPct').value = data.targetMaxPct;
+              
+              if(data.denomAsset){
+                  const dSel = document.getElementById('denomSelect');
+                  if(dSel){ dSel.value = data.denomAsset; updateDenomLabels(data.denomAsset); denomSym = data.denomAsset; }
+              }
+              // Calculate P0 if prices missing but config has p0
+              const curAlt = Number(document.getElementById('altUsd').value || 0);
+              if(curAlt === 0 && typeof data.p0 === 'number') { 
+                  document.getElementById('p0').value = data.p0; 
+                  updateUsdFromP0(); 
+              }
+          }
+      }
 
-  // Populate Config
-  if(typeof data.pmin === 'number') document.getElementById('pmin').value = data.pmin;
-  if(typeof data.pmax === 'number') document.getElementById('pmax').value = data.pmax;
-  if(typeof data.targetMinPct === 'number') document.getElementById('targetMinPct').value = data.targetMinPct;
-  if(typeof data.targetMaxPct === 'number') document.getElementById('targetMaxPct').value = data.targetMaxPct;
-  
-  if(data.denomAsset){
-      const dSel = document.getElementById('denomSelect');
-      if(dSel){ dSel.value = data.denomAsset; updateDenomLabels(data.denomAsset); denomSym = data.denomAsset; }
+      if(portfolioRes.ok) {
+          const portfolioData = await portfolioRes.json();
+          if(!portfolioData.error && typeof portfolioData.portfolioSize === 'number') {
+              const denomUsd = Number(document.getElementById('denomUsd').value || 1);
+              document.getElementById('portfolioSize').value = (portfolioData.portfolioSize / denomUsd).toFixed(6);
+          }
+      }
+
+  } catch(err) {
+      console.error(err);
+      statusEl.innerHTML = `<span style="color:var(--warn)">Config Load Error. Using defaults.</span>`;
   }
   
-  if(!portfolioData.error && typeof portfolioData.portfolioSize === 'number') {
-      const denomUsd = Number(document.getElementById('denomUsd').value || 1);
-      document.getElementById('portfolioSize').value = (portfolioData.portfolioSize / denomUsd).toFixed(6);
-  }
-  
+  // Continue execution even if config failed
   await autoFetchPrices(symbol, denomSym);
-  
-  // Calculate P0 if prices missing but config has p0
-  const curAlt = Number(document.getElementById('altUsd').value || 0);
-  if(curAlt === 0 && typeof data.p0 === 'number') { 
-      document.getElementById('p0').value = data.p0; 
-      updateUsdFromP0(); 
-  }
-  
   updateAutoTargets();
-  // Try to load exposure, but fail silently
   fetchLiveExposure();
   generate();
 }
 
 async function fetchLiveExposure() {
-    // Only works if backend exists
     const assetSym = document.getElementById('assetSelect').value;
     const denomUsd = Number(document.getElementById('denomUsd').value || 1);
     const statusEl = document.getElementById('fetchStatus');
@@ -644,30 +656,46 @@ async function fetchLiveExposure() {
     
     if(!assetSym) return;
     
-    const data = await safeFetch('/api/exposure');
-    if(data.error) {
-        // Suppress Backend "accountType" errors from UI
-        if (data.error.includes("accountType")) {
-             statusEl.textContent = ""; 
-        } else {
-             statusEl.textContent = "Live exposure data unavailable.";
-             statusEl.style.color = 'var(--muted)';
+    // RESTORED ORIGINAL ROBUST PARSING LOGIC
+    try {
+        const res = await fetch('/api/exposure');
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const rawData = await res.json();
+        
+        let dataList = [];
+        if (Array.isArray(rawData)) { dataList = rawData; } 
+        else if (typeof rawData === 'object' && rawData !== null) {
+            const keys = Object.keys(rawData);
+            if (keys.length > 0 && keys.every(k => k === k.toUpperCase() && k.length < 10)) {
+                dataList = keys.map(k => ({ symbol: k, ...rawData[k] }));
+            } else if (Array.isArray(rawData.table_data)) { dataList = rawData.table_data;
+            } else if (Array.isArray(rawData.data)) dataList = rawData.data;
+            else if (Array.isArray(rawData.positions)) dataList = rawData.positions;
+            else if (Array.isArray(rawData.result)) dataList = rawData.result;
+            else { dataList = [rawData]; }
         }
-        return;
-    }
-    
-    let dataList = Array.isArray(data) ? data : (data.data || []);
-    const found = dataList.find(p => (p.symbol||'').toUpperCase() === assetSym.toUpperCase() || (p.name||'').toUpperCase().includes(assetSym.toUpperCase()));
-    
-    if(found) {
-        const usdVal = Number(found.net_exposure_usd_from_base || 0);
-        const denomExposure = usdVal / denomUsd;
-        currentEEl.value = denomExposure.toFixed(6);
-        statusEl.textContent = `Auto-Loaded: $${fmt(usdVal, 0)} exposure`;
-        statusEl.style.color = 'var(--good)';
-        generate();
-    } else {
-        statusEl.textContent = `No live position found for ${assetSym}.`;
+
+        const found = dataList.find(p => {
+            const s1 = (p.symbol || '').toUpperCase();
+            const s2 = (p.ticker || '').toUpperCase();
+            const s3 = (p.asset || '').toUpperCase();
+            const s4 = (p.name || '').toUpperCase(); 
+            return s1 === assetSym.toUpperCase() || s2 === assetSym.toUpperCase() || s3 === assetSym.toUpperCase() || s4.includes(assetSym.toUpperCase());
+        });
+        
+        if(found) {
+            const usdVal = Number(found.net_exposure_usd_from_base || 0);
+            const denomExposure = usdVal / denomUsd;
+            currentEEl.value = denomExposure.toFixed(6);
+            statusEl.textContent = `Auto-Loaded: $${fmt(usdVal, 0)} exposure`;
+            statusEl.style.color = 'var(--good)';
+            generate(); // Refresh with new exposure
+        } else {
+            statusEl.textContent = `No live position found for ${assetSym}.`;
+            statusEl.style.color = 'var(--muted)';
+        }
+    } catch(e) {
+        // Silently fail for exposure if API missing
     }
 }
 
@@ -693,58 +721,154 @@ function buildBands(pmin, pmax, p0, stepPct){
   return {down, up};
 }
 
-function calculateStrategy(params) {
-  const { pmin, pmax, p0, stepPct, portfolioSize, targetMinPct, targetMaxPct, currentE, distMode, scaleMode } = params;
-  if(!(pmin>0 && pmax>pmin && p0>0)) return null;
-  
-  const bands = buildBands(pmin, pmax, p0, stepPct);
-  const scaleFactorAt = (px) => (scaleMode === 'scale' && p0 > 0) ? (px/p0) : 1;
+function calculateStrategy(params, manualBands) {
+  const {
+    pmin, pmax, p0, stepPct, portfolioSize, targetMinPct, targetMaxPct, currentE,
+    denomSymbol, denomUsd, assetSymbol, scaleMode, aprPct, maxDays, distMode
+  } = params;
+  if(!manualBands && !(pmin>0 && pmax>pmin && p0>0)) return null;
+  let bands = manualBands;
+  if (!bands) { bands = buildBands(pmin, pmax, p0, stepPct); }
+  const Ndown = bands.down.length, Nup = bands.up.length;
   const targetMin = portfolioSize * targetMinPct / 100;
   const targetMax = portfolioSize * targetMaxPct / 100;
-  
-  // Simplified calculation for display
-  const effectivePmin = pmin; 
+  const scaleFactorAt = (px) => (scaleMode === 'scale' && p0 > 0) ? (px/p0) : 1;
+  const effectivePmin = (pmin > 0) ? pmin : (bands.down.length > 0 ? bands.down[bands.down.length-1].pa : 0);
   const currentAtMin = currentE * scaleFactorAt(effectivePmin);
-  const needMinDelta = (targetMin - currentAtMin);
+  const needMinDelta = (targetMin - currentAtMin); 
+  const effectivePmax = (pmax > 0) ? pmax : (bands.up.length > 0 ? bands.up[bands.up.length-1].pb : 0);
+  const currentAtMax = currentE * scaleFactorAt(effectivePmax);
+  const needMoreNegativeAtMax = currentAtMax - targetMax; 
   
-  // Basic Linear Distribution Logic
-  const Ndown = bands.down.length;
-  const Nup = bands.up.length;
-  const perUsdBelow = Ndown > 0 ? needMinDelta / Ndown : 0;
-  
-  // Total logic
-  let rows = [];
-  let totalBelow = 0, totalAbove = 0;
-  
-  // Just use simple allocation for robustness in this snippet
-  [...bands.down, ...bands.up].forEach((b, i) => {
-      const isDown = b.type === 'Below';
-      let deployUSD = isDown ? Math.abs(perUsdBelow) : 0; 
-      let deployAlt = !isDown ? (Math.abs(targetMax)/p0)/Nup : 0; // rough approx
-      
-      rows.push({
-          bandIdx: i+1, pa: b.pa, pb: b.pb, type: b.type,
-          deployUSD: deployUSD, deployAltUsd: deployAlt, altUnitsAbove: deployAlt,
-          sourceTag: ''
-      });
-      if(isDown) totalBelow += deployUSD;
-      if(!isDown) totalAbove += deployAlt;
-  });
+  let aboveTotalScheduled = 0, constUnitsAbove = 0, globalL_Above = 0; 
+  if (Nup > 0) {
+      if (distMode === 'univ3') {
+          const totalAssetUnitsNeeded = needMoreNegativeAtMax / effectivePmax;
+          const term = (1/Math.sqrt(p0)) - (1/Math.sqrt(effectivePmax));
+          if(term > 0) globalL_Above = totalAssetUnitsNeeded / term;
+          aboveTotalScheduled = totalAssetUnitsNeeded * p0;
+      } else {
+          let sumSqrtP = 0;
+          for(const b of bands.up) sumSqrtP += Math.sqrt(b.pa * b.pb);
+          constUnitsAbove = sumSqrtP > 0 ? (needMoreNegativeAtMax / sumSqrtP) : 0;
+          for(const b of bands.up) aboveTotalScheduled += constUnitsAbove * Math.sqrt(b.pa * b.pb);
+      }
+  }
+  let globalL_Below = 0;
+  if(Ndown > 0 && distMode === 'univ3') {
+      const term = Math.sqrt(p0) - Math.sqrt(effectivePmin);
+      if(term > 0) globalL_Below = needMinDelta / term;
+  }
+  let holdingsAvail = Math.max(currentE, 0);
+  let buyShortAllowed = (targetMax < 0);
+  let holdingsUsed = 0;
+  let totalReq = aboveTotalScheduled; 
+  if(distMode === 'univ3' && Nup > 0){
+      totalReq = 0;
+      for(const b of bands.up){
+          const x_band = globalL_Above * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
+          totalReq += x_band * Math.sqrt(b.pa * b.pb);
+      }
+  }
+  if(currentE > 0 && targetMax === 0){
+    holdingsUsed = Math.min(totalReq, holdingsAvail);
+    if(holdingsUsed < totalReq && !buyShortAllowed) totalReq = holdingsUsed; 
+  } else {
+    holdingsUsed = Math.min(holdingsAvail, totalReq);
+    if(!buyShortAllowed){ totalReq = holdingsUsed; }
+  }
+  let ratio = (aboveTotalScheduled > 0) ? (totalReq / aboveTotalScheduled) : 0;
+  if(distMode === 'univ3' && Nup > 0) {
+      let rawSum = 0;
+      for(const b of bands.up) {
+           const x_band = globalL_Above * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
+           rawSum += x_band * Math.sqrt(b.pa * b.pb);
+      }
+      ratio = rawSum > 0 ? totalReq / rawSum : 0;
+      globalL_Above *= ratio;
+  } else { constUnitsAbove *= ratio; }
 
-  return { rows, kpi: { belowTotal: totalBelow, aboveTotal: totalAbove } };
+  let sumRdown = 0;
+  for(const b of bands.down) sumRdown += Math.sqrt(b.pa / b.pb); 
+  let perUsdBelow = 0;
+  if(distMode !== 'univ3'){
+      for(const b of bands.down){ b.r_down = Math.sqrt(b.pa / b.pb); }
+      sumRdown = 0; 
+      for(const b of bands.down) sumRdown += b.r_down;
+      perUsdBelow = sumRdown>0 ? (needMinDelta / sumRdown) : 0;
+  }
+  const rows = [];
+  const ordered = [...bands.down, ...bands.up];
+  let belowTotal = 0, cumBelowValue = 0, cumAboveSale = 0;
+  let holdingsRemaining = holdingsUsed;
+  let aboveTotal = 0;
+  ordered.forEach((b, idx) => {
+    const isDown = (b.type === 'Below');
+    const rdown = isDown ? b.r_down : 0;
+    const boundaryPx = isDown ? b.pa : b.pb;
+    let deployUSD = 0, valueAtPa = 0, deployAltUsd = 0, saleAtPb = 0, sourceTag = '', altUnitsAbove = 0;
+    if(isDown){
+      if(distMode === 'univ3') { deployUSD = globalL_Below * (Math.sqrt(b.pb) - Math.sqrt(b.pa)); } 
+      else { deployUSD = perUsdBelow; }
+      valueAtPa = deployUSD * rdown; // approx
+      belowTotal += deployUSD;
+      cumBelowValue += valueAtPa;
+    } else {
+       if (distMode === 'univ3') {
+          const x_band = globalL_Above * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
+          altUnitsAbove = x_band;
+          deployAltUsd = x_band * Math.sqrt(b.pa * b.pb);
+       } else {
+          altUnitsAbove = constUnitsAbove;
+          deployAltUsd = altUnitsAbove * Math.sqrt(b.pa * b.pb);
+       }
+       if(aboveTotal < totalReq - 1e-12){
+          aboveTotal += deployAltUsd;
+          let useHold = 0;
+          if(holdingsRemaining > 0){
+            useHold = Math.min(deployAltUsd, holdingsRemaining);
+            holdingsRemaining -= useHold;
+            sourceTag = '<span class="tag hold">Holdings</span>';
+          } else { sourceTag = '<span class="tag source">Buy+Short</span>'; }
+       }
+    }
+    const baseE = currentE * scaleFactorAt(boundaryPx);
+    const netAtBoundary = isDown ? (baseE + cumBelowValue) : (baseE - cumAboveSale);
+    rows.push({
+      bandIdx: b.origIdx || (idx + 1), pa: b.pa, pb: b.pb, type: b.type,
+      deployUSD, deployAltUsd, sourceTag, altUnitsAbove: (!isDown) ? altUnitsAbove : 0, netAtBoundary
+    });
+  });
+  return { rows, kpi: { Ndown, Nup, belowTotal, aboveTotal: totalReq }, rawBands: bands };
 }
 
 function renderLPSection(container, title, strategyData, denomSymbol, denomUsd, assetSymbol, lpId) {
   if(!strategyData) return;
-  const rows = strategyData.rows;
-  
+  const { rows } = strategyData;
+  rows.sort((a, b) => a.pa - b.pa);
+  let aboveAssetSum = 0, belowQuoteSum = 0, aboveDenomSum = 0, belowDenomSum = 0;
+  rows.forEach(r => {
+      if(r.type === 'Above') { aboveAssetSum += r.altUnitsAbove; aboveDenomSum += r.deployAltUsd; }
+      if(r.type === 'Below') { belowQuoteSum += r.deployUSD; belowDenomSum += r.deployUSD; }
+  });
+  const totalUsdAbove = aboveDenomSum * denomUsd;
+  const totalUsdBelow = belowDenomSum * denomUsd;
+
   const sectionHtml = `
     <div class="section-header">${title}</div>
+    <div class="summary-box">
+       <div class="summary-row">
+          <div class="summary-item"><label>Total ${assetSymbol} Above</label><div>${fmt(aboveAssetSum, 4)}</div></div>
+          <div class="summary-item"><label>Total USD Above</label><div>$${fmt(totalUsdAbove, 2)}</div></div>
+          <div class="summary-item"><label>Total ${denomSymbol} Below</label><div>${fmt(belowQuoteSum, 4)}</div></div>
+          <div class="summary-item"><label>Total USD Below</label><div>$${fmt(totalUsdBelow, 2)}</div></div>
+       </div>
+    </div>
     <div class="card"><div class="scroll"><table><thead><tr>
-        <th style="text-align:left;">Band</th><th>Range</th><th>Type</th><th>Deployed Asset</th><th>Value (USD)</th>
+        <th style="text-align:left;">Band</th><th>Range (p<sub>a</sub> - p<sub>b</sub>)</th><th>Type</th><th>Deployed Asset</th><th>Value (USD)</th>
     </tr></thead><tbody>
     ${rows.map(r => {
-        if((document.getElementById('showZeros').value!=='show') && (r.deployUSD + r.deployAltUsd < 1e-9)) return '';
+        if((document.getElementById('showZeros').value!=='show') && (r.deployUSD + r.deployAltUsd < 1e-12)) return '';
         let deployStr = '', usdVal = 0, color = '';
         if (r.type === 'Below') { deployStr = fmt(r.deployUSD, 6) + ' ' + denomSymbol; usdVal = r.deployUSD * denomUsd; color = 'var(--good)'; } 
         else { deployStr = fmt(r.altUnitsAbove, 6) + ' ' + assetSymbol; usdVal = r.deployAltUsd * denomUsd; color = 'var(--accent)'; }
@@ -761,35 +885,54 @@ function renderLPSection(container, title, strategyData, denomSymbol, denomUsd, 
 function getUnitsHeldAt(px, pmin, pmax, portSize, tMinPct, tMaxPct, mode) {
     const valMin = portSize * (tMinPct / 100);
     const valMax = portSize * (tMaxPct / 100);
+    const uMin = valMin / pmin;
+    const uMax = valMax / pmax;
     const p = Math.max(pmin, Math.min(px, pmax));
-    const progress = (p - pmin) / (pmax - pmin);
-    const currentTargetVal = valMin + (valMax - valMin) * progress;
-    return currentTargetVal / p;
+    if (mode === 'uniform') {
+        const progress = (p - pmin) / (pmax - pmin);
+        const currentTargetVal = valMin + (valMax - valMin) * progress;
+        return currentTargetVal / p;
+    } else if (mode === 'univ3') {
+        const deltaU = uMin - uMax;
+        if(Math.abs(pmax - pmin) < 1e-9) return uMin;
+        const invSqrtMin = 1/Math.sqrt(pmin);
+        const invSqrtMax = 1/Math.sqrt(pmax);
+        const L = deltaU / (invSqrtMin - invSqrtMax);
+        return L * (1/Math.sqrt(p) - 1/Math.sqrt(pmax)) + uMax;
+    }
+    return uMin;
 }
 
 function generate() {
   const container = document.getElementById('resultsContainer');
   container.innerHTML = '';
-  // Basic inputs
   const pmin = Number(document.getElementById('pmin').value);
   const pmax = Number(document.getElementById('pmax').value);
   const p0 = Number(document.getElementById('p0').value);
+  const stepPct = Number(document.getElementById('intervalPct').value);
   const portfolioSize = Number(document.getElementById('portfolioSize').value);
   const currentE = Number(document.getElementById('currentE').value);
+  const targetMinPct = Number(document.getElementById('targetMinPct').value);
+  const targetMaxPct = Number(document.getElementById('targetMaxPct').value);
+  const distMode = document.getElementById('distMode').value;
+  const isDual = document.getElementById('dualLpMode').checked;
+  const isJlpMode = document.getElementById('jlpStrategyMode').checked;
+  
+  const strategies = [];
+  let capitalRatio = isDual ? (Number(document.getElementById('dualMult').value) || 0.5) : (isJlpMode ? 0.5 : 1.0);
   const assetSymbol = (document.getElementById('assetSelect').value || 'ALT').toUpperCase();
   const denomSymbol = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
-  const denomUsd = Number(document.getElementById('denomUsd').value) || 0;
   
-  const baseParams = { 
-      pmin, pmax, p0, stepPct: Number(document.getElementById('intervalPct').value),
-      portfolioSize, currentE, targetMinPct: Number(document.getElementById('targetMinPct').value),
-      targetMaxPct: Number(document.getElementById('targetMaxPct').value),
-      distMode: document.getElementById('distMode').value,
-      scaleMode: document.getElementById('scaleMode').value
-  };
+  const baseParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol: denomSym, denomUsd: Number(document.getElementById('denomUsd').value), assetSymbol, scaleMode: document.getElementById('scaleMode').value, aprPct: 0, maxDays: 0, distMode };
+  strategies.push({ title: isDual?`LP 1 (${capitalRatio}x)`:`Schedule`, id: 'lp1', params: baseParams });
+     
+  if(isDual) {
+        const usdPmin = pmin * baseParams.denomUsd, usdPmax = pmax * baseParams.denomUsd, usdP0 = p0 * baseParams.denomUsd;
+        strategies.push({ title: `LP 2 (USD, ${capitalRatio}x)`, id: 'lp2', params: { ...baseParams, pmin: usdPmin, pmax: usdPmax, p0: usdP0, portfolioSize: portfolioSize * baseParams.denomUsd * capitalRatio, currentE: currentE * baseParams.denomUsd * capitalRatio, denomSymbol: 'USD', denomUsd: 1 } });
+  }
   
-  const stratData = calculateStrategy(baseParams);
-  renderLPSection(container, "Schedule", stratData, denomSymbol, denomUsd, assetSymbol, 'lp1');
+  strategies.forEach(s => { if(!s.data) s.data = calculateStrategy(s.params); });
+  strategies.forEach(s => renderLPSection(container, s.title, s.data, s.params.denomSymbol, s.params.denomUsd, s.params.assetSymbol, s.id));
 }
 
 // --- CROSS PAIR LOGIC ---
@@ -824,7 +967,6 @@ function captureSnapshot(slot) {
     const targetValUsd = targetUnitsCurrent * p0 * denomUsd; 
     const curValUsd = curExp * denomUsd;
     
-    // Ensure we capture USD Price. Fallback if input is missing.
     let finalUsdPrice = altUsdInput;
     if(finalUsdPrice <= 0 && p0 > 0 && denomUsd > 0) {
         finalUsdPrice = p0 * denomUsd; 
@@ -963,16 +1105,13 @@ function generateCrossSchedule(centerPrice, usd_A, usd_B, bias, symA, symB) {
     const tbody = document.querySelector('#crossTable tbody');
     tbody.innerHTML = '';
     
-    const bandsAbove = 3;
-    const bandsBelow = 3;
-    
-    const perBandA = usd_A / bandsAbove; 
-    const perBandB = usd_B / bandsBelow;    
-    
     const bands = [
         { pct: -3, type: 'Below' }, { pct: -2, type: 'Below' }, { pct: -1, type: 'Below' },
         { pct: 0, type: 'Above' }, { pct: 1, type: 'Above' }, { pct: 2, type: 'Above' }
     ];
+    
+    const perBandA = usd_A / 3; 
+    const perBandB = usd_B / 3;    
     
     const priceA_USD = Number(crossState.A.usdPrice) || 1;
     const priceB_USD = Number(crossState.B.usdPrice) || 1;
@@ -1022,7 +1161,6 @@ async function updateCrossHistory(days) {
     let idA = COINGECKO_IDS[crossState.A.name.toUpperCase()] || crossState.A.name.toLowerCase();
     let idB = COINGECKO_IDS[crossState.B.name.toUpperCase()] || crossState.B.name.toLowerCase();
     
-    // Explicit Fix for BNB/SOL
     if(crossState.B.name.toUpperCase() === 'BNB') idB = 'binancecoin';
     if(crossState.A.name.toUpperCase() === 'BNB') idA = 'binancecoin';
     if(crossState.B.name.toUpperCase() === 'SOL') idB = 'solana';
@@ -1107,8 +1245,23 @@ function renderCrossPriceChart(data, symA, symB) {
     
     window.crossChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ data: values, borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: `Ratio: ${fmt(last, 6)} (${change>0?'+':''}${fmt(change,2)}%)`, color: color, font: { size: 14 } } }, scales: { x: { display: false }, y: { position: 'right', grid: { color: '#1a2433' }, ticks: { color: '#666' } } } }
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `${symA}/${symB}`,
+                data: values,
+                borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: `Ratio: ${fmt(last, 6)} (${change>0?'+':''}${fmt(change,2)}%)`, color: color, font: { size: 14 } }
+            },
+            scales: { x: { display: false }, y: { position: 'right', grid: { color: '#1a2433' }, ticks: { color: '#666' } } }
+        }
     });
 }
 
@@ -1394,3 +1547,4 @@ function generatePnLSchedule() {
 </script>
 </body>
 </html>
+```</candidate>
