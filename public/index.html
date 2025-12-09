@@ -37,6 +37,7 @@
 
   .wrap { padding:16px 18px 36px; max-width:2000px; margin:0 auto; }
   .layout-grid { display:grid; grid-template-columns:1.15fr 1fr; gap:14px; align-items:start; }
+  .layout-dashboard { display:grid; grid-template-columns: 1fr 2fr; gap:16px; margin-bottom: 16px; }
   
   .card {
     background:var(--card); border:1px solid #17202d; border-radius:16px;
@@ -76,9 +77,9 @@
     border:1px solid #26415f; background:#0f1723;
     font-size:10px; color:#a7c4e6;
   }
-  table { width:100%; border-collapse:separate; border-spacing:0; min-width:1400px; table-layout:auto; }
+  table { width:100%; border-collapse:separate; border-spacing:0; min-width:100%; table-layout:auto; }
   th, td { padding:6px 8px; border-bottom:1px solid #1a2433; text-align:right; white-space:nowrap; }
-  th { position:sticky; top:0; background:#0f1622; z-index:2; font-weight:600; color:#b9cbe0; white-space:normal; line-height:1.2; }
+  th { position:sticky; top:0; background:#0f1622; z-index:2; font-weight:600; color:#b9cbe0; white-space:normal; line-height:1.2; text-align:right; }
   th:first-child, td:first-child { text-align:left; position:sticky; left:0; background:linear-gradient(90deg,#0f1622,#0f1622cc); z-index:1; }
   .scroll { overflow:auto; border:1px solid #17202d; border-radius:14px; max-height:60vh; }
   
@@ -107,12 +108,10 @@
   .chart-container { position: relative; height: 300px; width: 100%; margin-bottom: 16px; }
   .time-btns { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 8px; }
   .time-btns button { font-size: 10px; padding: 2px 8px; border-radius: 4px; }
-
-  /* Triple Chart Grid for CP */
-  .cp-charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 20px; }
-  .cp-chart-box { background: #0e1622; border: 1px solid #1a2433; border-radius: 12px; padding: 10px; height: 260px; position:relative; }
-  .cp-chart-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; text-align:center; }
-  .cp-chart-wrapper { position:relative; height:220px; width:100%; }
+  
+  /* Mini Charts for Cross Pair */
+  .mini-chart-box { background:#0f151e; border:1px solid #1a2433; border-radius:10px; padding:10px; margin-bottom:10px; height:150px; position:relative; }
+  .mini-chart-title { font-size:11px; color:var(--muted); margin-bottom:4px; font-weight:600; text-align:center; }
 </style>
 </head>
 <body>
@@ -321,8 +320,8 @@
         </div>
         <div class="footnote" style="margin-bottom:12px;">
             1. Go to "Single LP Planner". Load <b>Asset A (e.g. SOL)</b> and click "Capture Base (A)".<br>
-            2. Load <b>Asset B (e.g. ETH)</b> and click "Capture Quote (B)".<br>
-            3. Return here to calculate the implied +EV strategy for the pair (SOL-ETH).
+            2. Load <b>Asset B (e.g. BNB)</b> and click "Capture Quote (B)".<br>
+            3. Return here to calculate the implied +EV strategy.
         </div>
         
         <div class="cp-grid">
@@ -332,10 +331,9 @@
                     <span id="cpNameA" style="font-weight:bold; color:var(--ink);">--</span>
                 </div>
                 <div class="row2">
-                    <div><span class="cp-label">Pmin (BTC)</span><div class="cp-val" id="cpMinA">--</div></div>
-                    <div><span class="cp-label">Pmax (BTC)</span><div class="cp-val" id="cpMaxA">--</div></div>
-                    <div><span class="cp-label">Target Inventory</span><div class="cp-val" id="cpTgtA">--</div></div>
-                    <div><span class="cp-label">Current Inventory</span><div class="cp-val" id="cpCurA">--</div></div>
+                    <div><span class="cp-label">Surplus (USD)</span><div class="cp-val" id="cpSurplusA">--</div></div>
+                    <div><span class="cp-label">Target Inv</span><div class="cp-val" id="cpTgtA">--</div></div>
+                    <div><span class="cp-label">Current Inv</span><div class="cp-val" id="cpCurA">--</div></div>
                 </div>
             </div>
             <div class="cp-card" id="cpSlotB">
@@ -344,43 +342,71 @@
                     <span id="cpNameB" style="font-weight:bold; color:var(--ink);">--</span>
                 </div>
                  <div class="row2">
-                    <div><span class="cp-label">Pmin (BTC)</span><div class="cp-val" id="cpMinB">--</div></div>
-                    <div><span class="cp-label">Pmax (BTC)</span><div class="cp-val" id="cpMaxB">--</div></div>
-                    <div><span class="cp-label">Target Inventory</span><div class="cp-val" id="cpTgtB">--</div></div>
-                    <div><span class="cp-label">Current Inventory</span><div class="cp-val" id="cpCurB">--</div></div>
+                    <div><span class="cp-label">Surplus (USD)</span><div class="cp-val" id="cpSurplusB">--</div></div>
+                    <div><span class="cp-label">Target Inv</span><div class="cp-val" id="cpTgtB">--</div></div>
+                    <div><span class="cp-label">Current Inv</span><div class="cp-val" id="cpCurB">--</div></div>
                 </div>
             </div>
         </div>
         
-        <button class="purple" id="btnCalcCross" style="width:100%; font-weight:600; padding:12px;">Calculate Cross-Pair Strategy</button>
+        <button class="purple" id="btnCalcCross" style="width:100%; font-weight:600; padding:12px;">Calculate Strategy</button>
         
-        <div id="cpResults" style="display:none; margin-top:16px;">
-             <div class="cp-charts-row">
-                 <div class="cp-chart-box">
-                     <div class="cp-chart-title" id="titleChartA">Profile A</div>
-                     <div class="cp-chart-wrapper"><canvas id="cpChartA"></canvas></div>
+        <div id="cpResults" style="display:none; margin-top:24px;">
+             
+             <div class="layout-dashboard">
+                 <div>
+                     <div class="mini-chart-box">
+                        <div class="mini-chart-title" id="titleChartA">Asset A Plan</div>
+                        <canvas id="chartA_Exp"></canvas>
+                     </div>
+                     <div class="mini-chart-box">
+                        <div class="mini-chart-title" id="titleChartB">Asset B Plan</div>
+                        <canvas id="chartB_Exp"></canvas>
+                     </div>
                  </div>
-                 <div class="cp-chart-box">
-                     <div class="cp-chart-title" id="titleChartB">Profile B</div>
-                     <div class="cp-chart-wrapper"><canvas id="cpChartB"></canvas></div>
-                 </div>
-                 <div class="cp-chart-box">
-                     <div class="cp-chart-title" id="titleChartRatio">Relative Price (30D)</div>
-                     <div class="cp-chart-wrapper"><canvas id="cpChartRatio"></canvas></div>
+                 <div class="card" style="margin-bottom:0; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="font-weight:bold; color:var(--ink);" id="crossChartTitle">Ratio History</span>
+                        <div class="time-btns">
+                            <button class="secondary active" onclick="updateCrossHistory('30')">1M</button>
+                            <button class="secondary" onclick="updateCrossHistory('365')">1Y</button>
+                            <button class="secondary" onclick="updateCrossHistory('max')">MAX</button>
+                        </div>
+                    </div>
+                    <div style="flex:1; position:relative; min-height:200px;">
+                        <canvas id="crossPriceChart"></canvas>
+                    </div>
                  </div>
              </div>
 
              <div class="summary-box" style="margin-top:16px;">
                 <div class="summary-row">
                      <div class="summary-item"><label>Implied Price</label><div id="resImpPrice" style="color:var(--accent);">--</div></div>
-                     <div class="summary-item"><label>Implied Range (+/- 3%)</label><div id="resImpRange">--</div></div>
-                     <div class="summary-item"><label>Inventory Surplus (USD)</label><div id="resGapUsd">--</div></div>
-                     <div class="summary-item"><label>Status</label><div id="resStatus" style="font-weight:bold;">--</div></div>
+                     <div class="summary-item"><label>Implied Range (±3%)</label><div id="resImpRange">--</div></div>
+                     <div class="summary-item"><label>Gap (USD)</label><div id="resGapUsd">--</div></div>
+                     <div class="summary-item"><label>Strategy</label><div id="resStatus" style="font-weight:bold;">--</div></div>
                 </div>
              </div>
              
-             <div id="cpScheduleTable" style="margin-top:16px;"></div>
              <div class="rec-box" id="recBox"></div>
+
+             <div class="section-header" style="margin-top:20px;">Inventory-Weighted Schedule (±3%)</div>
+             <div class="card">
+                 <div class="scroll">
+                     <table id="crossTable">
+                         <thead>
+                             <tr>
+                                 <th style="text-align:left">Band</th>
+                                 <th>Price Range (A/B)</th>
+                                 <th>Type</th>
+                                 <th>Deposit Asset</th>
+                                 <th>Value (USD)</th>
+                             </tr>
+                         </thead>
+                         <tbody></tbody>
+                     </table>
+                 </div>
+             </div>
         </div>
       </div>
   </div>
@@ -907,7 +933,7 @@ function generate() {
   strategies.forEach(s => renderLPSection(container, s.title, s.data, s.params.denomSymbol, s.params.denomUsd, s.params.assetSymbol, s.id));
 }
 
-// --- UPDATED CROSS PAIR OPTIMIZER LOGIC ---
+// --- UPDATED CROSS PAIR OPTIMIZER LOGIC (Charts + Schedule) ---
 const crossState = { A: null, B: null };
 
 function captureSnapshot(slot) {
@@ -922,18 +948,28 @@ function captureSnapshot(slot) {
     const curExp = Number(document.getElementById('currentE').value);
     const denomUsd = Number(document.getElementById('denomUsd').value) || 1;
     const distMode = document.getElementById('distMode').value;
+    const stepPct = Number(document.getElementById('intervalPct').value);
     
-    // Calculate Target at current price
+    // Store curve data for charting
+    const points = [];
+    let p = pmin;
+    while(p <= pmax * (1 + stepPct/100)) { 
+        const u = getUnitsHeldAt(p, pmin, pmax, portSize, tMinPct, tMaxPct, distMode);
+        const expPct = (portSize > 0) ? (u * p / portSize) * 100 : 0;
+        points.push({px: p, expPct});
+        if(p >= pmax) break; p = p * (1 + stepPct/100); if(p > pmax && p < pmax * 1.01) p = pmax; 
+    }
+
     const targetUnitsCurrent = getUnitsHeldAt(p0, pmin, pmax, portSize, tMinPct, tMaxPct, distMode);
     const targetValUsd = targetUnitsCurrent * p0 * denomUsd; 
     const curValUsd = curExp * denomUsd;
+    const usdPrice = document.getElementById('altUsd').value || 0;
 
     const snap = {
         name: asset,
-        pmin, pmax, p0, denom, denomUsd,
+        pmin, pmax, p0, denom, denomUsd, usdPrice,
         targetValUsd, curValUsd, targetUnitsCurrent, curExp,
-        // Params needed for recreating the curve chart
-        portSize, tMinPct, tMaxPct, distMode
+        curvePoints: points
     };
 
     crossState[slot] = snap;
@@ -947,342 +983,292 @@ function renderCrossCard(slot) {
     const s = crossState[slot];
     if(!s) return;
     document.getElementById(`cpName${slot}`).innerText = s.name;
-    document.getElementById(`cpMin${slot}`).innerText = fmt(s.pmin, 6);
-    document.getElementById(`cpMax${slot}`).innerText = fmt(s.pmax, 6);
+    
+    const surplus = s.curValUsd - s.targetValUsd;
+    const surplusEl = document.getElementById(`cpSurplus${slot}`);
+    surplusEl.innerText = (surplus>0?'+':'') + `$${fmt(surplus, 0)}`;
+    surplusEl.style.color = surplus > 0 ? 'var(--accent)' : 'var(--ink)';
+    
     document.getElementById(`cpTgt${slot}`).innerText = `$${fmt(s.targetValUsd, 0)}`;
-    const curEl = document.getElementById(`cpCur${slot}`);
-    curEl.innerText = `$${fmt(s.curValUsd, 0)}`;
-    const diff = s.curValUsd - s.targetValUsd;
-    if(diff < -100) curEl.style.color = 'var(--warn)';
-    else if(diff > 100) curEl.style.color = 'var(--accent)';
-    else curEl.style.color = 'var(--ink)';
+    document.getElementById(`cpCur${slot}`).innerText = `$${fmt(s.curValUsd, 0)}`;
 }
 
-function generateCrossSchedule(impPrice) {
-    const A = crossState.A;
-    const B = crossState.B;
-    
-    // Calculate Available Surplus Capital
-    const availA_USD = Math.max(0, A.curValUsd - A.targetValUsd);
-    const availB_USD = Math.max(0, B.curValUsd - B.targetValUsd);
-    
-    // Bands: 3, 2, 1, -1, -2, -3
-    const sortedBands = [3, 2, 1, -1, -2, -3];
-    
-    // Logic: +EV Market Making. 
-    // If we have surplus A (Base), we sell it on the way up (Ask).
-    // If we have surplus B (Quote), we buy A on the way down (Bid).
-    // We split the surplus evenly across the 3 bands on each side.
-    
-    const capitalPerBandA = availA_USD / 3;
-    const capitalPerBandB = availB_USD / 3;
-    
-    const tbody = document.querySelector('#cpScheduleContainer');
-    if(!tbody) return;
-    
-    let html = `<div class="card"><div class="scroll"><table><thead>
-      <tr>
-         <th style="text-align:left">Band</th>
-         <th>Price Range (${A.name}/${B.name})</th>
-         <th>Action</th>
-         <th>Placement Amount</th>
-         <th>Value (USD)</th>
-      </tr>
-    </thead><tbody>`;
-    
-    sortedBands.forEach(pct => {
-         const isAsk = pct > 0;
-         let pStart, pEnd, valUsd, amount, side, color, action;
-         
-         if(isAsk) {
-             // Ask Side: +1% to +3%. Use Surplus A.
-             pStart = impPrice * (1 + (pct-1)/100);
-             pEnd = impPrice * (1 + pct/100);
-             valUsd = capitalPerBandA;
-             
-             // Amount of A = Value in USD / Price of A in USD
-             // Price of A in USD = A.p0 * A.denomUsd (since A.p0 is A/BTC)
-             const priceA_USD = A.p0 * A.denomUsd;
-             amount = valUsd / priceA_USD;
-             
-             action = `Sell ${A.name}`;
-             side = A.name;
-             color = 'var(--accent)';
-         } else {
-             // Bid Side: -3% to -1%. Use Surplus B.
-             pStart = impPrice * (1 + pct/100);
-             pEnd = impPrice * (1 + (pct+1)/100);
-             valUsd = capitalPerBandB;
-             
-             // Amount of B = Value in USD / Price of B in USD
-             // Price of B in USD = B.p0 * B.denomUsd (since B.p0 is B/BTC)
-             const priceB_USD = B.p0 * B.denomUsd;
-             amount = valUsd / priceB_USD;
-             
-             action = `Buy ${A.name}`;
-             side = B.name;
-             color = 'var(--good)';
-         }
-         
-         if(valUsd > 1) {
-             html += `<tr>
-               <td style="color:${color}; font-weight:bold;">${pct > 0 ? '+' : ''}${pct}%</td>
-               <td>${fmt(pStart, 5)} - ${fmt(pEnd, 5)}</td>
-               <td style="font-size:11px; color:#aaa;">${action}</td>
-               <td style="font-weight:600; color:${color}">${fmt(amount, 4)} ${side}</td>
-               <td>$${fmt(valUsd, 2)}</td>
-            </tr>`;
-         }
-    });
-    
-    html += `</tbody></table></div></div>`;
-    tbody.innerHTML = html;
-    
-    // Update Recommendation Text
-    const totalCap = availA_USD + availB_USD;
-    document.getElementById('recBox').innerHTML = `<div style="color:#fff; font-weight:bold; margin-bottom:4px;">Strategy: Neutral Inventory Bridge (+/- 3%)</div>
-    <div style="font-size:12px; color:var(--muted);">
-       This schedule automatically balances your inventory. It uses your excess <b>${B.name}</b> to place buy orders below the current price and excess <b>${A.name}</b> to place sell orders above.
-       <br>Total Capital Deployed: <b>$${fmt(totalCap, 0)}</b>
-    </div>`;
-}
-
-// --- CHART DRAWING HELPERS ---
-let chartInstA = null, chartInstB = null, chartInstRatio = null;
-
-function renderChartProfile(canvasId, snap, color, inst, setInst) {
+function renderSmallExposureChart(canvasId, snap, color) {
     const ctx = document.getElementById(canvasId).getContext('2d');
-    if(inst) inst.destroy();
+    if(window[canvasId] instanceof Chart) window[canvasId].destroy();
     
-    // Simulate Curve
-    const pts = [];
-    let p = snap.pmin * 0.95;
-    const step = (snap.pmax - snap.pmin) / 40;
-    while(p <= snap.pmax * 1.05) {
-        const u = getUnitsHeldAt(p, snap.pmin, snap.pmax, snap.portSize, snap.tMinPct, snap.tMaxPct, snap.distMode);
-        const expPct = (u * p) / snap.portSize * 100;
-        pts.push({x: p, y: expPct});
-        p += step;
-    }
-    
-    const chart = new Chart(ctx, {
+    window[canvasId] = new Chart(ctx, {
         type: 'line',
         data: {
+            labels: snap.curvePoints.map(p => p.px),
             datasets: [{
-                data: pts.map(d=>d.y),
-                labels: pts.map(d=>d.x.toFixed(6)),
+                label: 'Exposure %',
+                data: snap.curvePoints.map(p => p.expPct),
                 borderColor: color,
+                backgroundColor: color + '22',
                 borderWidth: 2,
-                pointRadius: 0,
                 fill: true,
-                backgroundColor: color + '1a'
+                pointRadius: 0
             }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { x: { display: false }, y: { display:true, grid:{color:'#1a2433'} } }
+            scales: {
+                x: { display: true, ticks: { maxTicksLimit: 5, color: '#666' } },
+                y: { display: true, grid: { color: '#1a2433' } }
+            }
         }
     });
-    setInst(chart);
 }
 
-async function fetchRatioHistory(A, B) {
-    const ctx = document.getElementById('cpChartRatio').getContext('2d');
-    if(chartInstRatio) chartInstRatio.destroy();
-    
-    const idA = COINGECKO_IDS[A.name] || A.name.toLowerCase();
-    const idB = COINGECKO_IDS[B.name] || B.name.toLowerCase();
-    
-    try {
-        const [resA, resB] = await Promise.all([
-            fetch(`https://api.coingecko.com/api/v3/coins/${idA}/market_chart?vs_currency=usd&days=30`),
-            fetch(`https://api.coingecko.com/api/v3/coins/${idB}/market_chart?vs_currency=usd&days=30`)
-        ]);
-        
-        const dataA = await resA.json();
-        const dataB = await resB.json();
-        
-        if(!dataA.prices || !dataB.prices) return;
-        
-        const ratioPoints = [];
-        const len = Math.min(dataA.prices.length, dataB.prices.length);
-        
-        // Simple alignment by index (daily/hourly data usually matches)
-        for(let i=0; i<len; i+=4) {
-            const pA = dataA.prices[i][1];
-            const pB = dataB.prices[i][1];
-            ratioPoints.push(pA / pB);
-        }
-        
-        const startP = ratioPoints[0];
-        const endP = ratioPoints[ratioPoints.length-1];
-        const change = ((endP - startP) / startP) * 100;
-        const color = change >= 0 ? '#17c964' : '#ff5d5d';
-        
-        document.getElementById('titleChartRatio').innerHTML = `Relative Price (30D) <span style="color:${color}">${change>0?'+':''}${change.toFixed(2)}%</span>`;
-        
-        chartInstRatio = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ratioPoints.map((_, i) => i),
-                datasets: [{
-                    data: ratioPoints,
-                    borderColor: color,
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { x: { display: false }, y: { grid:{color:'#1a2433'} } }
-            }
-        });
-    } catch(e) { console.log(e); }
-}
-
-async function calculateCrossPair() {
+function calculateCrossPair() {
     if(!crossState.A || !crossState.B) { alert("Please capture both Asset A (Base) and Asset B (Quote) first."); return; }
     
     const A = crossState.A; 
     const B = crossState.B; 
-    const impPrice = A.p0 / B.p0;
+    const impPrice = (Number(A.usdPrice) / Number(B.usdPrice));
     const impMin = A.pmin / B.pmax;
     const impMax = A.pmax / B.pmin;
     
     const gapA_USD = A.curValUsd - A.targetValUsd; 
     const gapB_USD = B.curValUsd - B.targetValUsd; 
     
+    // 1. Show Visuals
     document.getElementById('cpResults').style.display = 'block';
+    document.getElementById('titleChartA').innerText = `${A.name} Exposure Plan`;
+    document.getElementById('titleChartB').innerText = `${B.name} Exposure Plan`;
+    document.getElementById('crossChartTitle').innerText = `${A.name}/${B.name} Price History`;
+    
+    // 2. Render Mini Charts
+    renderSmallExposureChart('chartA_Exp', A, '#5bb0ff');
+    renderSmallExposureChart('chartB_Exp', B, '#17c964');
+    
+    // 3. Render History
+    updateCrossHistory('30');
+    
+    // 4. Stats
     document.getElementById('resImpPrice').innerText = fmt(impPrice, 6) + ` ${B.name}`;
-    document.getElementById('resImpRange').innerText = `${fmt(impPrice*0.97, 5)} - ${fmt(impPrice*1.03, 5)}`;
+    document.getElementById('resImpRange').innerText = `${fmt(impMin, 5)} - ${fmt(impMax, 5)}`;
     
     const gapStrA = gapA_USD > 0 ? `+${fmt(gapA_USD,0)}` : fmt(gapA_USD,0);
     const gapStrB = gapB_USD > 0 ? `+${fmt(gapB_USD,0)}` : fmt(gapB_USD,0);
     document.getElementById('resGapUsd').innerText = `${A.name}:${gapStrA} / ${B.name}:${gapStrB}`;
     
-    let statusMsg = "Neutral";
-    if(gapA_USD > 0 && gapB_USD > 0) { statusMsg = "Double Surplus (Deploy All)"; document.getElementById('resStatus').style.color='var(--good)'; }
-    else { statusMsg = "Imbalanced (Partial)"; document.getElementById('resStatus').style.color='var(--warn)'; }
+    // 5. Strategy & Schedule Logic (+EV Indifference)
+    let surplusA = Math.max(0, gapA_USD);
+    let surplusB = Math.max(0, gapB_USD);
+    
+    let bias = 'balanced';
+    let statusMsg = "Balanced Deployment";
+    let color = "#fff";
+    let recHtml = "";
+    
+    const ratio = (surplusB > 0) ? surplusA / surplusB : (surplusA > 0 ? 999 : 1);
+    
+    if (surplusA > 100 && surplusB > 100) {
+        if (ratio > 1.2) { 
+            bias = 'sell'; 
+            statusMsg = `Surplus Skewed: Heavy ${A.name}`; 
+            color = 'var(--accent)';
+            recHtml = `<div style="color:var(--muted)">You have more ${A.name} than ${B.name}. The schedule below allocates the extra ${A.name} to the upper bands (Ask Side) to capture fees while scaling out.</div>`;
+        } else if (ratio < 0.8) { 
+            bias = 'buy'; 
+            statusMsg = `Surplus Skewed: Heavy ${B.name}`; 
+            color = 'var(--good)';
+            recHtml = `<div style="color:var(--muted)">You have more ${B.name} than ${A.name}. The schedule below allocates the extra ${B.name} to the lower bands (Bid Side) to capture fees while acquiring ${A.name} on dips.</div>`;
+        } else {
+            recHtml = `<div style="color:var(--muted)">Balanced Inventory. Distributing evenly across ±3% range for maximum fee capture.</div>`;
+        }
+    } else {
+        recHtml = `<div style="color:var(--muted)">Using available inventory to create market schedule.</div>`;
+    }
+    
     document.getElementById('resStatus').innerText = statusMsg;
+    document.getElementById('resStatus').style.color = color;
+    document.getElementById('recBox').innerHTML = recHtml;
     
-    // 1. Render Charts
-    document.getElementById('titleChartA').innerText = `${A.name} Exposure`;
-    document.getElementById('titleChartB').innerText = `${B.name} Exposure`;
-    renderChartProfile('cpChartA', A, '#5bb0ff', chartInstA, (c)=>chartInstA=c);
-    renderChartProfile('cpChartB', B, '#17c964', chartInstB, (c)=>chartInstB=c);
-    await fetchRatioHistory(A, B);
-    
-    // 2. Generate Schedule
-    generateCrossSchedule(impPrice);
+    generateCrossSchedule(impPrice, surplusA, surplusB, bias, A.name, B.name);
 }
 
-// --- ADDED FROM INDEX (3): CHART & SCHEDULE FUNCTIONS ---
+function generateCrossSchedule(centerPrice, usd_A, usd_B, bias, symA, symB) {
+    const tbody = document.querySelector('#crossTable tbody');
+    tbody.innerHTML = '';
+    
+    let matchedVal = Math.min(usd_A, usd_B);
+    let excessA = Math.max(0, usd_A - usd_B);
+    let excessB = Math.max(0, usd_B - usd_A);
+    
+    if (matchedVal < 100) { matchedVal = 0; excessA = usd_A; excessB = usd_B; }
+    
+    const bands = [
+        { pct: -3, type: 'Below' }, { pct: -2, type: 'Below' }, { pct: -1, type: 'Below' },
+        { pct: 0, type: 'Above' }, { pct: 1, type: 'Above' }, { pct: 2, type: 'Above' }
+    ];
+    
+    const perBandMatched = matchedVal / 6;
+    const perBandExcessA = excessA / 3; 
+    const perBandExcessB = excessB / 3; 
+    
+    bands.forEach(b => {
+        const pStart = centerPrice * (1 + b.pct/100);
+        const pEnd = centerPrice * (1 + (b.pct+1)/100);
+        
+        let allocUsd = perBandMatched;
+        if (b.type === 'Above') allocUsd += perBandExcessA;
+        if (b.type === 'Below') allocUsd += perBandExcessB;
+        
+        if (allocUsd < 1) return; 
+        
+        let amtA = 0, amtB = 0;
+        const priceA_USD = Number(crossState.A.usdPrice);
+        const priceB_USD = Number(crossState.B.usdPrice);
+        
+        const rowColor = b.type === 'Below' ? 'var(--good)' : 'var(--accent)';
+        const arrow = b.type === 'Below' ? '↓' : '↑';
+        
+        let tokenStr = '';
+        if(b.type === 'Below') {
+            const tokenAmt = allocUsd / priceB_USD;
+            tokenStr = `<td>-</td><td style="font-weight:600; color:${rowColor}">${fmt(tokenAmt, 4)} ${symB}</td>`;
+        } else {
+            const tokenAmt = allocUsd / priceA_USD;
+            tokenStr = `<td style="font-weight:600; color:${rowColor}">${fmt(tokenAmt, 4)} ${symA}</td><td>-</td>`;
+        }
+
+        const row = `<tr>
+            <td style="color:${rowColor}">${arrow} ${Math.abs(b.pct)}%</td>
+            <td>${fmt(pStart, 6)} - ${fmt(pEnd, 6)}</td>
+            <td style="color:${rowColor}">${b.type}</td>
+            ${tokenStr}
+            <td style="color:#aaa">$${fmt(allocUsd, 2)}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
+
+// --- CROSS CHART HISTORY ---
+async function updateCrossHistory(days) {
+    if(!crossState.A || !crossState.B) return;
+    
+    document.querySelectorAll('#crossVisuals .time-btns button').forEach(b => {
+        b.classList.remove('active');
+        if(b.textContent.toLowerCase().includes(days === '30' ? '1m' : (days === '365' ? '1y' : 'max'))) b.classList.add('active');
+    });
+
+    const idA = COINGECKO_IDS[crossState.A.name.toUpperCase()] || crossState.A.name.toLowerCase();
+    const idB = COINGECKO_IDS[crossState.B.name.toUpperCase()] || crossState.B.name.toLowerCase();
+    
+    // Use robust fallback logic
+    const getUrl = (id, d) => {
+        if(window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+            return `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${d}`;
+        }
+        return `/api/history?id=${id}&days=${d}`;
+    };
+    
+    try {
+        const [resA, resB] = await Promise.all([fetch(getUrl(idA, days)), fetch(getUrl(idB, days))]);
+        const dataA = await resA.json();
+        const dataB = await resB.json();
+        
+        if(!dataA.prices || !dataB.prices) throw new Error("Missing history");
+        
+        const crossPoints = [];
+        const bMap = new Map();
+        // Round to nearest hour to ensure matches (CoinGecko data varies in granularity)
+        const roundTime = (t) => Math.round(t / 3600000) * 3600000;
+        
+        dataB.prices.forEach(p => bMap.set(roundTime(p[0]), p[1]));
+
+        dataA.prices.forEach(ptA => {
+             const k = roundTime(ptA[0]);
+             let valB = bMap.get(k);
+             // If exact match fails, check neighbors (1 hr)
+             if(!valB) valB = bMap.get(k - 3600000) || bMap.get(k + 3600000);
+             
+             if(valB) crossPoints.push({ x: ptA[0], y: ptA[1] / valB });
+        });
+        
+        renderCrossPriceChart(crossPoints, crossState.A.name, crossState.B.name);
+        
+    } catch(e) { console.warn("Cross History Error", e); }
+}
+
+function renderCrossPriceChart(data, symA, symB) {
+    const ctx = document.getElementById('crossPriceChart').getContext('2d');
+    if(window.crossChart instanceof Chart) window.crossChart.destroy();
+    
+    const labels = data.map(d => new Date(d.x).toLocaleDateString());
+    const values = data.map(d => d.y);
+    const first = values[0], last = values[values.length-1];
+    const change = ((last - first)/first)*100;
+    const color = change >= 0 ? '#17c964' : '#ff5d5d';
+    
+    window.crossChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: `${symA}/${symB}`,
+                data: values,
+                borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: `Ratio: ${fmt(last, 6)} (${change>0?'+':''}${fmt(change,2)}%)`, color: color, font: { size: 14 } }
+            },
+            scales: { x: { display: false }, y: { position: 'right', grid: { color: '#1a2433' }, ticks: { color: '#666' } } }
+        }
+    });
+}
+
+// --- SINGLE CHART FUNCTIONS ---
 
 function renderExposureChart(rows, denomSym, assetSym, p0) {
     const canvasId = 'exposureChart';
     const oldCanvas = document.getElementById(canvasId);
     if(!oldCanvas) return;
     
-    // Data extraction
     const labels = rows.map(r => r.pricePair);
     const dataExp = rows.map(r => r.expPct);
     const dataUsdPrice = rows.map(r => r.priceUsd);
     
-    new Chart(oldCanvas, {
+    if(window.mainExpChart instanceof Chart) window.mainExpChart.destroy();
+
+    window.mainExpChart = new Chart(oldCanvas, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Net Exposure %',
-                    data: dataExp,
-                    borderColor: '#5bb0ff',
-                    backgroundColor: 'rgba(91, 176, 255, 0.1)',
-                    yAxisID: 'y',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.2
-                },
-                {
-                    label: `${assetSym} Price (USD)`,
-                    data: dataUsdPrice,
-                    borderColor: '#17c964',
-                    borderDash: [5, 5],
-                    yAxisID: 'y1',
-                    borderWidth: 1.5,
-                    pointRadius: 0,
-                    pointHoverRadius: 0,
-                    tension: 0.1
-                }
+                { label: 'Net Exposure %', data: dataExp, borderColor: '#5bb0ff', backgroundColor: 'rgba(91, 176, 255, 0.1)', yAxisID: 'y', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.2 },
+                { label: `${assetSym} Price (USD)`, data: dataUsdPrice, borderColor: '#17c964', borderDash: [5, 5], yAxisID: 'y1', borderWidth: 1.5, pointRadius: 0, tension: 0.1 }
             ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                tooltip: {
-                    backgroundColor: '#101620',
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#333',
-                    borderWidth: 1
-                },
-                legend: { labels: { color: '#9fb1c7' } }
-            },
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            plugins: { tooltip: { backgroundColor: '#101620', titleColor: '#fff', bodyColor: '#ccc', borderColor: '#333', borderWidth: 1 }, legend: { labels: { color: '#9fb1c7' } } },
             scales: {
-                x: {
-                    type: 'linear',
-                    display: true,
-                    title: { display: true, text: `Price (${assetSym}/${denomSym})`, color: '#555' },
-                    grid: { color: '#1a2433' },
-                    ticks: { color: '#9fb1c7' }
-                },
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: { display: true, text: 'Net Exposure (%)', color: '#5bb0ff' },
-                    grid: { color: '#1a2433' },
-                    ticks: { color: '#5bb0ff' }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: { display: true, text: 'Price (USD)', color: '#17c964' },
-                    grid: { drawOnChartArea: false },
-                    ticks: { color: '#17c964', callback: function(value) { return '$' + value; } }
-                }
+                x: { type: 'linear', display: true, title: { display: true, text: `Price (${assetSym}/${denomSym})`, color: '#555' }, grid: { color: '#1a2433' }, ticks: { color: '#9fb1c7' } },
+                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net Exposure (%)', color: '#5bb0ff' }, grid: { color: '#1a2433' }, ticks: { color: '#5bb0ff' } },
+                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Price (USD)', color: '#17c964' }, grid: { drawOnChartArea: false }, ticks: { color: '#17c964', callback: function(value) { return '$' + value; } } }
             },
             animation: {
                 onComplete: function(animation) {
                     const ctx = animation.chart.ctx;
-                    const chart = animation.chart;
-                    const xAxis = chart.scales.x;
-                    const yAxis = chart.scales.y;
+                    const xAxis = animation.chart.scales.x;
+                    const yAxis = animation.chart.scales.y;
                     const xVal = p0;
                     if(xVal >= xAxis.min && xVal <= xAxis.max) {
                         const xPix = xAxis.getPixelForValue(xVal);
-                        ctx.save();
-                        ctx.beginPath();
-                        ctx.moveTo(xPix, yAxis.top);
-                        ctx.lineTo(xPix, yAxis.bottom);
-                        ctx.lineWidth = 1;
-                        ctx.strokeStyle = '#ffffff';
-                        ctx.setLineDash([2, 4]);
-                        ctx.stroke();
-                        ctx.restore();
-                        ctx.fillStyle = '#fff';
-                        ctx.fillText('P₀', xPix + 4, yAxis.top + 10);
+                        ctx.save(); ctx.beginPath(); ctx.moveTo(xPix, yAxis.top); ctx.lineTo(xPix, yAxis.bottom);
+                        ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.setLineDash([2, 4]); ctx.stroke(); ctx.restore();
+                        ctx.fillStyle = '#fff'; ctx.fillText('P₀', xPix + 4, yAxis.top + 10);
                     }
                 }
             }
@@ -1293,31 +1279,20 @@ function renderExposureChart(rows, denomSym, assetSym, p0) {
 async function fetchAndRenderHistory(days, pmin, pmax, portfolioSize, targetMinPct, targetMaxPct, distMode, assetSym, denomSym, denomUsd) {
     const container = document.getElementById('historyChartContainer');
     if(!container) return;
-    
-    // Calculate Active Capital for APR
     const activeBelowPct = Number(document.getElementById('activeUtilBelow').value) || 0;
     const activeAbovePct = Number(document.getElementById('activeUtilAbove').value) || 0;
     const aprPct = Number(document.getElementById('aprPct').value) || 0;
-    
-    // We approximate active capital as a weighted average since we don't recalculate the full strat curve for every historical price point (too slow)
-    const activeRatio = (activeBelowPct + activeAbovePct) / 200; // Average of the two %s / 100
+    const activeRatio = (activeBelowPct + activeAbovePct) / 200; 
     
     container.innerHTML = `<div style="color:var(--muted); padding:20px; text-align:center;">Fetching ${days}-day history...</div>`;
-    
     let assetId = COINGECKO_IDS[assetSym] || assetSym.toLowerCase();
     
-    // CoinGecko API logic
-    const apiUrl = `/api/history?id=${assetId}&days=${days}`; 
-    const directUrl = `https://api.coingecko.com/api/v3/coins/${assetId}/market_chart?vs_currency=usd&days=${days}`;
+    // Robust fallback
+    const getUrl = (id, d) => (window.location.hostname === 'localhost' || window.location.protocol === 'file:') ? `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${d}` : `/api/history?id=${id}&days=${d}`;
     
     let prices = [];
-    
     try {
-        let res = await fetch(apiUrl);
-        if(!res.ok) {
-            console.warn("Proxy history fetch failed, trying direct...");
-            res = await fetch(directUrl);
-        }
+        let res = await fetch(getUrl(assetId, days));
         if(!res.ok) throw new Error("Failed to fetch history");
         const data = await res.json();
         prices = data.prices; 
@@ -1326,138 +1301,39 @@ async function fetchAndRenderHistory(days, pmin, pmax, portfolioSize, targetMinP
         return;
     }
     
-    // Process Data for Backtest
-    let cumPnL = 0;
-    let cumYield = 0;
-    let cumYieldPnL = 0;
-    
+    let cumPnL = 0; let cumYield = 0; let cumYieldPnL = 0;
     const histData = prices.map((p, idx) => {
         const timestamp = p[0];
         const date = new Date(timestamp).toLocaleDateString(undefined, {month:'numeric', day:'numeric'});
         const priceUsd = p[1];
         const pairPrice = priceUsd / (denomUsd > 0 ? denomUsd : 1);
-        
         const units = getUnitsHeldAt(pairPrice, pmin, pmax, portfolioSize, targetMinPct, targetMaxPct, distMode);
         
-        // PnL Calculation (Delta PnL)
-        // PnL_t = (Price_t - Price_t-1) * Units_Held_t-1
         if(idx > 0) {
             const prevPrice = prices[idx-1][1] / (denomUsd > 0 ? denomUsd : 1);
             const prevUnits = getUnitsHeldAt(prevPrice, pmin, pmax, portfolioSize, targetMinPct, targetMaxPct, distMode);
             const priceDelta = pairPrice - prevPrice;
             const stepPnL = priceDelta * prevUnits;
             cumPnL += stepPnL;
-            
-            // Yield Calculation
-            // dt in days
             const dt = (timestamp - prices[idx-1][0]) / (1000 * 60 * 60 * 24);
-            const activeCap = portfolioSize * activeRatio; // In Denom
+            const activeCap = portfolioSize * activeRatio; 
             const stepYield = activeCap * (aprPct/100) * (dt/365);
             cumYield += stepYield;
             cumYieldPnL = cumPnL + cumYield;
         }
-        
         const expDenom = units * pairPrice;
         const expPct = (portfolioSize > 0) ? (expDenom / portfolioSize) * 100 : 0;
-        
         return { x: date, price: priceUsd, expPct, pnl: cumPnL, totalPnl: cumYieldPnL };
     });
     
-    // Render Two Charts: Exposure and PnL
-    container.innerHTML = `
-      <div style="margin-bottom:12px;">
-         <canvas id="historyExpChart" height="200"></canvas>
-      </div>
-      <div>
-         <canvas id="historyPnlChart" height="200"></canvas>
-      </div>
-    `;
-    
-    // Chart 1: Exposure
+    container.innerHTML = `<div style="margin-bottom:12px;"><canvas id="historyExpChart" height="200"></canvas></div><div><canvas id="historyPnlChart" height="200"></canvas></div>`;
     new Chart(document.getElementById('historyExpChart'), {
-        type: 'line',
-        data: {
-            labels: histData.map(d => d.x),
-            datasets: [
-                {
-                    label: 'Simulated Exposure %',
-                    data: histData.map(d => d.expPct),
-                    borderColor: '#5bb0ff',
-                    borderWidth: 2,
-                    yAxisID: 'yExp',
-                    pointRadius: 0,
-                    tension: 0.2
-                },
-                {
-                    label: 'Price (USD)',
-                    data: histData.map(d => d.price),
-                    backgroundColor: 'rgba(23, 201, 100, 0.1)',
-                    borderColor: '#17c964',
-                    borderWidth: 1,
-                    fill: true,
-                    yAxisID: 'yPrice',
-                    pointRadius: 0,
-                    tension: 0.2
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            scales: {
-                x: { display:false },
-                yExp: { type: 'linear', display: true, position: 'left', grid: { color: '#1a2433' } },
-                yPrice: { type: 'linear', display: true, position: 'right', grid: { display: false } }
-            },
-            plugins: { title: { display: true, text: 'Historical Exposure Check', color: '#9fb1c7' } }
-        }
+        type: 'line', data: { labels: histData.map(d => d.x), datasets: [{ label: 'Simulated Exposure %', data: histData.map(d => d.expPct), borderColor: '#5bb0ff', borderWidth: 2, yAxisID: 'yExp', pointRadius: 0, tension: 0.2 }, { label: 'Price (USD)', data: histData.map(d => d.price), backgroundColor: 'rgba(23, 201, 100, 0.1)', borderColor: '#17c964', borderWidth: 1, fill: true, yAxisID: 'yPrice', pointRadius: 0, tension: 0.2 }] },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { display:false }, yExp: { type: 'linear', display: true, position: 'left', grid: { color: '#1a2433' } }, yPrice: { type: 'linear', display: true, position: 'right', grid: { display: false } } }, plugins: { title: { display: true, text: 'Historical Exposure Check', color: '#9fb1c7' } } }
     });
-
-    // Chart 2: PnL
     new Chart(document.getElementById('historyPnlChart'), {
-        type: 'line',
-        data: {
-            labels: histData.map(d => d.x),
-            datasets: [
-                {
-                    label: `Strategy PnL (${denomSym})`,
-                    data: histData.map(d => d.pnl),
-                    borderColor: '#e08aff',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.2
-                },
-                {
-                    label: `Total PnL w/ Yield (${denomSym})`,
-                    data: histData.map(d => d.totalPnl),
-                    borderColor: '#ffe600', // Gold for Yield
-                    borderDash: [4,4],
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.2
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            scales: {
-                x: { ticks: { maxTicksLimit: 10, color: '#666' } },
-                y: { grid: { color: '#1a2433' }, title: { display:true, text:`PnL (${denomSym})` } }
-            },
-            plugins: { 
-                title: { display: true, text: `Strategy Profit Simulation (APR: ${aprPct}%)`, color: '#9fb1c7' },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                             return ctx.dataset.label + ': ' + Number(ctx.raw).toFixed(4);
-                        }
-                    }
-                }
-            }
-        }
+        type: 'line', data: { labels: histData.map(d => d.x), datasets: [{ label: `Strategy PnL (${denomSym})`, data: histData.map(d => d.pnl), borderColor: '#e08aff', borderWidth: 2, pointRadius: 0, tension: 0.2 }, { label: `Total PnL w/ Yield (${denomSym})`, data: histData.map(d => d.totalPnl), borderColor: '#ffe600', borderDash: [4,4], borderWidth: 2, pointRadius: 0, tension: 0.2 }] },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { maxTicksLimit: 10, color: '#666' } }, y: { grid: { color: '#1a2433' }, title: { display:true, text:`PnL (${denomSym})` } } }, plugins: { title: { display: true, text: `Strategy Profit Simulation (APR: ${aprPct}%)`, color: '#9fb1c7' } } }
     });
 }
 
@@ -1472,7 +1348,6 @@ function updateBacktest(daysStr) {
    const denomSym = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
    const denomUsd = Number(document.getElementById('denomUsd').value) || 0;
    
-   // Highlight active button
    document.querySelectorAll('.time-btns button').forEach(b => {
        b.classList.remove('active');
        if(b.textContent.toLowerCase() === daysStr.toLowerCase() || (daysStr==='max' && b.textContent==='MAX')) b.classList.add('active');
@@ -1508,16 +1383,10 @@ function generateExposureSchedule() {
     <div class="layout-grid">
         <div>
             <div class="section-header">Exposure Profile</div>
-            <div class="card">
-                <div class="chart-container" style="height:350px;">
-                    <canvas id="exposureChart"></canvas>
-                </div>
-            </div>
+            <div class="card"><div class="chart-container" style="height:350px;"><canvas id="exposureChart"></canvas></div></div>
         </div>
         <div>
-            <div class="section-header" style="justify-content:space-between;">
-                <span>Backtest vs History</span>
-            </div>
+            <div class="section-header" style="justify-content:space-between;"><span>Backtest vs History</span></div>
             <div class="card">
                 <div class="time-btns">
                     <button class="secondary" onclick="updateBacktest('30')">30D</button>
@@ -1526,31 +1395,20 @@ function generateExposureSchedule() {
                     <button class="secondary" onclick="updateBacktest('365')">1Y</button>
                     <button class="secondary" onclick="updateBacktest('max')">MAX</button>
                 </div>
-                <div class="chart-container" id="historyChartContainer" style="position:relative; height:420px;">
-                   <div style="padding:20px; color:var(--muted); text-align:center;">Select timeframe to load</div>
-                </div>
+                <div class="chart-container" id="historyChartContainer" style="position:relative; height:420px;"><div style="padding:20px; color:var(--muted); text-align:center;">Select timeframe to load</div></div>
             </div>
         </div>
     </div>
     <div class="section-header">Detailed Schedule</div>
-    <div class="card">
-        <div class="scroll">
-            <table><thead><tr><th style="text-align:left">Price (${assetSym}/${denomSym})</th><th>Price (${assetSym}/USD)</th><th>Net Exposure (Port %)</th><th>Net Exposure (${denomSym})</th><th>Net Exposure (USD)</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td style="text-align:left; color:var(--accent);">${fmt(r.pricePair, 8)}</td><td>$${fmt(r.priceUsd, 2)}</td><td style="color:${r.expPct >= 0 ? 'var(--good)' : 'var(--bad)'}">${fmt(r.expPct, 2)}%</td><td>${fmt(r.expDenom, 4)}</td><td>$${fmt(r.expUsd, 2)}</td></tr>`).join('')}</tbody></table>
-        </div>
-    </div>`;
+    <div class="card"><div class="scroll"><table><thead><tr><th style="text-align:left">Price (${assetSym}/${denomSym})</th><th>Price (${assetSym}/USD)</th><th>Net Exposure (Port %)</th><th>Net Exposure (${denomSym})</th><th>Net Exposure (USD)</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td style="text-align:left; color:var(--accent);">${fmt(r.pricePair, 8)}</td><td>$${fmt(r.priceUsd, 2)}</td><td style="color:${r.expPct >= 0 ? 'var(--good)' : 'var(--bad)'}">${fmt(r.expPct, 2)}%</td><td>${fmt(r.expDenom, 4)}</td><td>$${fmt(r.expUsd, 2)}</td></tr>`).join('')}</tbody></table></div></div>`;
   const div = document.createElement('div'); div.innerHTML = html; container.appendChild(div);
   
-  setTimeout(() => {
-      renderExposureChart(rows, denomSym, assetSym, p0);
-      updateBacktest('30'); // Default load 30d
-  }, 100);
+  setTimeout(() => { renderExposureChart(rows, denomSym, assetSym, p0); updateBacktest('30'); }, 100);
 }
 
 function generatePnLSchedule() {
   const container = document.getElementById('resultsContainer'); container.innerHTML = '';
-  
-  // Basic Params
   const pmin = Number(document.getElementById('pmin').value);
   const pmax = Number(document.getElementById('pmax').value);
   const p0 = Number(document.getElementById('p0').value);
@@ -1562,50 +1420,31 @@ function generatePnLSchedule() {
   const currentE = Number(document.getElementById('currentE').value) || 0;
   const distMode = document.getElementById('distMode').value;
   const scaleMode = document.getElementById('scaleMode').value;
-  
-  // APR INPUTS (Active)
   const aprPct = Number(document.getElementById('aprPct').value) || 0;
   const activeBelowPct = Number(document.getElementById('activeUtilBelow').value) || 0;
   const activeAbovePct = Number(document.getElementById('activeUtilAbove').value) || 0;
-
   const assetSym = (document.getElementById('assetSelect').value || 'ALT').toUpperCase();
   const denomSym = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
   
   if (pmin <= 0 || pmax <= pmin || portfolioSize <= 0 || p0 <= 0) return;
   
-  // 1. Recalculate the Strategy Data to get the EXACT required capital (Total Below / Total Above)
   const isDual = document.getElementById('dualLpMode').checked;
   const isJlpMode = document.getElementById('jlpStrategyMode').checked;
   let capitalRatio = isDual ? (Number(document.getElementById('dualMult').value) || 0.5) : (isJlpMode ? 0.5 : 1.0);
   
-  const strategyParams = { 
-      pmin, pmax, p0, stepPct, 
-      portfolioSize: portfolioSize * capitalRatio, 
-      currentE: currentE * capitalRatio, 
-      targetMinPct, targetMaxPct, 
-      denomSymbol: denomSym, denomUsd, assetSymbol: assetSym, 
-      scaleMode, aprPct: 0, maxDays: 0, distMode 
-  };
-  
+  const strategyParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, targetMinPct, targetMaxPct, denomSymbol: denomSym, denomUsd, assetSymbol: assetSym, scaleMode, aprPct: 0, maxDays: 0, distMode };
   const stratData = calculateStrategy(strategyParams);
-  
   if (!stratData || !stratData.kpi) return;
   
-  // Capital Required for the Strategy (in Denom/BTC)
   const stratCapBelow = stratData.kpi.belowTotal;
   const stratCapAbove = stratData.kpi.aboveTotal;
   const stratCapTotal = stratCapBelow + stratCapAbove;
-  
-  // 2. Calculate Active Capital based on User Inputs
   const activeCapBelow = stratCapBelow * (activeBelowPct / 100);
   const activeCapAbove = stratCapAbove * (activeAbovePct / 100);
   const totalActiveCap = activeCapBelow + activeCapAbove;
-  
-  // 3. Calculate Daily Yield
   const dailyYield = (totalActiveCap * (aprPct / 100)) / 365;
   const effectiveGlobalApr = stratCapTotal > 0 ? ((dailyYield * 365) / stratCapTotal) * 100 : 0;
   
-  // 4. Generate PnL Points
   let rawPrices = [p0]; let p = pmin;
   while(p <= pmax * (1 + stepPct/100)) { rawPrices.push(p); p = p * (1 + stepPct/100); if(p > pmax && p < pmax * 1.01) p = pmax; }
   rawPrices = [...new Set(rawPrices)].sort((a,b) => a - b);
@@ -1632,8 +1471,7 @@ function generatePnLSchedule() {
          Active Above: ${fmt(activeCapAbove, 4)} ${denomSym} (${activeAbovePct}%)
        </div>
     </div>
-    <div class="card">
-    <div class="scroll"><table><thead><tr><th style="text-align:left">Price (${assetSym}/${denomSym})</th><th>Target Exp (${denomSym})</th><th>PnL (${denomSym})</th><th>PnL (USD)</th><th>Days to Break Even</th></tr></thead><tbody>${points.map(r => {
+    <div class="card"><div class="scroll"><table><thead><tr><th style="text-align:left">Price (${assetSym}/${denomSym})</th><th>Target Exp (${denomSym})</th><th>PnL (${denomSym})</th><th>PnL (USD)</th><th>Days to Break Even</th></tr></thead><tbody>${points.map(r => {
        const isP0 = Math.abs(r.px - p0) < 1e-9;
        let daysStr = (r.pnl < 0 && dailyYield > 0) ? (Math.abs(r.pnl)/dailyYield).toFixed(1) + ' d' : '–';
        const pnlColor = r.pnl >= 0 ? 'var(--good)' : 'var(--bad)';
@@ -1652,7 +1490,6 @@ function generatePnLSchedule() {
   document.getElementById('btnCalcCross').addEventListener('click', calculateCrossPair);
   if(document.getElementById('btnClear')) document.getElementById('btnClear').addEventListener('click', function(){ document.getElementById('resultsContainer').innerHTML = ''; });
   
-  // ADDED: Listeners for new tabs
   const btnExp = document.getElementById('btnExposure');
   if(btnExp) btnExp.addEventListener('click', generateExposureSchedule);
   const btnPnL = document.getElementById('btnPnL');
