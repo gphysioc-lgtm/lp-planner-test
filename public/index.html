@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LP Exposure Planner</title>
+<title>CL LP Exposure Planner — Capital Deployment</title>
 <style>
   :root{
     --bg:#0b0f14;
@@ -26,20 +26,37 @@
     color:var(--text);
   }
   header{
-    padding:16px 18px;
+    padding:14px 18px;
     border-bottom:1px solid var(--line);
     background:linear-gradient(180deg, rgba(16,24,38,.95), rgba(16,24,38,.65));
     position:sticky; top:0; z-index:10;
     backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
   }
-  header h1{margin:0; font-size:16px; font-weight:700; letter-spacing:.2px;}
-  header .sub{margin-top:4px; color:var(--muted); font-size:12px;}
-  main{padding:18px; max-width:1180px; margin:0 auto;}
+  header h1{margin:0; font-size:14px; font-weight:800; letter-spacing:.2px;}
+  header .tabs{display:flex; gap:8px;}
+  .tab{
+    border:1px solid rgba(28,42,66,.9);
+    background:rgba(255,255,255,.03);
+    color:var(--muted);
+    border-radius:10px;
+    padding:7px 10px;
+    font-weight:800;
+    cursor:pointer;
+    user-select:none;
+  }
+  .tab.active{
+    color:var(--text);
+    border-color: rgba(82,167,255,.65);
+    box-shadow: 0 0 0 3px rgba(82,167,255,.10) inset;
+  }
+  main{padding:18px; max-width:1500px; margin:0 auto;}
   .grid{
     display:grid; gap:14px;
-    grid-template-columns: 1.3fr .9fr;
+    grid-template-columns: 1.35fr .65fr;
+    align-items:start;
   }
-  @media (max-width: 980px){ .grid{grid-template-columns:1fr;} }
+  @media (max-width: 1200px){ .grid{grid-template-columns:1fr;} }
   .card{
     border:1px solid var(--line);
     border-radius:12px;
@@ -48,13 +65,13 @@
     overflow:hidden;
   }
   .card .hd{
-    padding:12px 14px;
+    padding:10px 14px;
     border-bottom:1px solid var(--line);
     display:flex; align-items:center; justify-content:space-between;
-    gap:12px;
+    gap:10px;
   }
   .card .hd h2{
-    margin:0; font-size:13px; font-weight:800; letter-spacing:.25px; text-transform:uppercase;
+    margin:0; font-size:12px; font-weight:900; letter-spacing:.25px; text-transform:uppercase;
     color:#cfe3ff;
   }
   .card .bd{padding:14px;}
@@ -62,13 +79,10 @@
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .row4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
   .row5 { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
-  .field{
-    display:flex; flex-direction:column; gap:4px;
-  }
-  label{
-    font-size:11px; color:var(--muted);
-  }
-  input, select, textarea{
+  .row6 { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+  .field{display:flex; flex-direction:column; gap:4px;}
+  label{font-size:11px; color:var(--muted);}
+  input, select{
     background:rgba(10,15,22,.65);
     color:var(--text);
     border:1px solid rgba(28,42,66,.9);
@@ -76,37 +90,37 @@
     padding:8px 10px;
     outline:none;
     transition: border-color .15s ease, box-shadow .15s ease;
+    font-size:12px;
   }
-  input:focus, select:focus, textarea:focus{
+  input:focus, select:focus{
     border-color: rgba(82,167,255,.75);
     box-shadow: 0 0 0 3px rgba(82,167,255,.12);
   }
   input[readonly]{
-    opacity:.85;
+    opacity:.88;
     background:rgba(10,15,22,.35);
   }
-  .btnbar{display:flex; gap:8px; flex-wrap:wrap;}
+  .btnbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
   button{
     border:1px solid rgba(28,42,66,.9);
     background:linear-gradient(180deg, rgba(82,167,255,.18), rgba(82,167,255,.06));
     color:var(--text);
     border-radius:10px;
-    padding:9px 12px;
-    font-weight:700;
+    padding:8px 11px;
+    font-weight:800;
     cursor:pointer;
     transition: transform .05s ease, background .15s ease, border-color .15s ease;
+    font-size:12px;
   }
   button:hover{border-color: rgba(82,167,255,.75);}
   button:active{transform: translateY(1px);}
-  .ghost{
-    background:rgba(255,255,255,.03);
-  }
+  .ghost{background:rgba(255,255,255,.03);}
   .danger{
     background:linear-gradient(180deg, rgba(255,90,115,.15), rgba(255,90,115,.06));
     border-color: rgba(255,90,115,.35);
   }
   .pill{
-    font-size:11px;
+    font-size:10px;
     padding:3px 8px;
     border-radius:999px;
     border:1px solid rgba(28,42,66,.9);
@@ -125,20 +139,22 @@
     font-size:12px;
   }
   th, td{
-    padding:8px 8px;
+    padding:7px 8px;
     border-bottom:1px solid rgba(28,42,66,.75);
     text-align:right;
     white-space:nowrap;
   }
   th{
     color:var(--muted);
-    font-weight:800;
+    font-weight:900;
     text-transform:uppercase;
-    font-size:11px;
+    font-size:10px;
     letter-spacing:.25px;
+    background:rgba(12,18,28,.35);
+    position:sticky; top:0;
+    z-index:2;
   }
   td:first-child, th:first-child{ text-align:left; }
-  .small{font-size:11px;}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
   .tag{
     display:inline-block;
@@ -148,15 +164,12 @@
     border:1px solid rgba(28,42,66,.9);
     color:var(--muted);
     background:rgba(255,255,255,.03);
+    margin-right:4px;
   }
   .tag.hold{border-color: rgba(82,167,255,.55); color: rgba(82,167,255,.95);}
   .tag.source{border-color: rgba(255,204,102,.55); color: rgba(255,204,102,.95);}
-  .right{display:flex; gap:8px; align-items:center;}
-  .hint{
-    color:var(--muted);
-    font-size:11px;
-    margin-top:8px;
-  }
+  .tag.bad{border-color: rgba(255,90,115,.55); color: rgba(255,90,115,.95);}
+  .hint{color:var(--muted); font-size:11px; margin-top:8px;}
   .note{
     color:var(--muted);
     font-size:12px;
@@ -165,1041 +178,1214 @@
     border:1px dashed rgba(28,42,66,.9);
     background:rgba(255,255,255,.02);
   }
-  .kbd{font:11px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    padding:2px 6px; border-radius:7px; border:1px solid rgba(28,42,66,.9); background:rgba(255,255,255,.03); color:var(--muted);}
+  .scroll{
+    max-height:56vh;
+    overflow:auto;
+    border:1px solid rgba(28,42,66,.55);
+    border-radius:10px;
+  }
+  .right{display:flex; gap:8px; align-items:center;}
+  .small{font-size:11px;}
+  .toggleLine{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    margin-top:6px;
+  }
+  .checkbox{
+    display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px;
+    user-select:none;
+  }
+  .checkbox input{width:auto; transform: translateY(1px);}
+  .inlineHelp{font-size:10px; color:var(--muted); margin-top:2px; min-height:14px;}
+  .gridWide{
+    display:grid; gap:14px;
+    grid-template-columns: 1fr;
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>LP Exposure Planner</h1>
-  <div class="sub">Plan net exposure schedules above/below a mid-price, with optional scaling and target clamps.</div>
+  <div>
+    <h1>CL LP Exposure Planner</h1>
+    <div class="small muted">Single LP Planner & Cross-Pair Optimizer UI — with Sheets + price auto-load and denom-aware math.</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tabSingle">Single LP Planner</div>
+    <div class="tab" id="tabCross">Cross-Pair Optimizer</div>
+  </div>
 </header>
 
 <main>
-  <div class="grid">
 
-    <!-- Left: Inputs -->
-    <section class="card">
+  <!-- SINGLE LP VIEW -->
+  <section id="viewSingle" class="gridWide">
+    <div class="card">
       <div class="hd">
         <h2>Inputs</h2>
         <div class="right">
-          <span class="pill" id="envPill">Local</span>
-          <span class="pill good" id="pricePill">Price OK</span>
+          <span class="pill" id="pillSheets">Sheets: —</span>
+          <span class="pill" id="pillPrices">Prices: —</span>
         </div>
       </div>
       <div class="bd">
-        <div class="row4">
+
+        <div class="row2">
           <div class="field">
-            <label>Asset (Numerator)</label>
-            <select id="assetSelect"></select>
+            <label>Alt asset (Select to load config)</label>
+            <select id="altSelect"></select>
+            <div class="inlineHelp" id="altHelp"></div>
           </div>
           <div class="field">
-            <label>Denom (Denominator)</label>
-            <select id="denomSelect">
-              <option value="BTC">BTC</option>
-              <option value="USDT">USDT</option>
-              <option value="USDC">USDC</option>
-              <option value="USD">USD</option>
-              <option value="ETH">ETH</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>ALT/USD <span class="muted">(auto)</span></label>
-            <input id="altUsd" type="number" step="0.0001" value="0"/>
-          </div>
-          <div class="field">
-            <label><span class="denomLabel">BTC</span>/USD <span class="muted">(auto)</span></label>
-            <input id="denomUsd" type="number" step="0.0001" value="0"/>
+            <label>Denominated asset</label>
+            <select id="denomSelect"></select>
+            <div class="inlineHelp" id="denomHelp"></div>
           </div>
         </div>
 
-        <div class="sep"></div>
-
-        <div class="row4">
+        <div class="row3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
           <div class="field">
-            <label>P₀ (ALT/<span class="denomLabelShort">BTC</span>) <span class="muted">(auto = ALT/USD ÷ denom/USD)</span></label>
-            <input id="p0" type="number" step="0.00000001" value="0"/>
+            <label>Alt Price (USD)</label>
+            <input id="altUsd" type="number" step="0.0001" value="0">
           </div>
           <div class="field">
-            <label>Pmin</label>
-            <input id="pmin" type="number" step="0.00000001" value="0"/>
+            <label><span id="denomUsdLabel">BTC</span> Price (USD)</label>
+            <input id="denomUsd" type="number" step="0.0001" value="0">
           </div>
           <div class="field">
-            <label>Pmax</label>
-            <input id="pmax" type="number" step="0.00000001" value="0"/>
-          </div>
-          <div class="field">
-            <label>Max bands per side</label>
-            <input id="maxBands" type="number" step="1" value="50"/>
+            <label>JLP Price (USD, for JLP Mode)</label>
+            <input id="jlpUsd" type="number" step="0.0001" value="0">
           </div>
         </div>
 
-        <div class="row4" style="margin-top:6px;">
+        <div class="row3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
           <div class="field">
-            <label>Portfolio size (<span class="denomLabelShort">BTC</span>)</label>
-            <input id="portfolioSize" type="number" step="0.0001" value="0"/>
+            <label>Price Min (Pmin, ALT/denom)</label>
+            <input id="pmin" type="number" step="0.0000000001" value="0">
           </div>
           <div class="field">
-            <label>Target @ Pmin (%)</label>
-            <input id="targetMinPct" type="number" step="0.01" value="50"/>
+            <label>Price Max (Pmax, ALT/denom)</label>
+            <input id="pmax" type="number" step="0.0000000001" value="0">
           </div>
           <div class="field">
-            <label>Target @ Pmax (%)</label>
-            <input id="targetMaxPct" type="number" step="0.01" value="150"/>
-          </div>
-          <div class="field">
-            <label>Distribution</label>
-            <select id="distMode">
-              <option value="uniform">Uniform (Equal quote below / equal units above)</option>
-              <option value="univ3">Uniswap V3 (Constant liquidity)</option>
-            </select>
+            <label>Current Price P₀ (ALT/denom) <span class="muted">(Calculated)</span></label>
+            <input id="p0" class="mono" type="number" step="0.0000000001" value="0" readonly>
           </div>
         </div>
 
-        <div class="row5" style="margin-top:6px;">
-          <div>
+        <div class="row3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+          <div class="field">
+            <label>Total Portfolio size (<span id="denomSym1">BTC</span>)</label>
+            <input id="portfolioSize" type="number" step="0.0001" value="0">
+          </div>
+          <div class="field">
+            <label>Target net exposure @ Pmin (% of portfolio)</label>
+            <input id="targetMinPct" type="number" step="0.01" value="0">
+          </div>
+          <div class="field">
+            <label>Target net exposure @ Pmax (% of portfolio)</label>
+            <input id="targetMaxPct" type="number" step="0.01" value="0">
+          </div>
+        </div>
+
+        <div class="row6" style="margin-top:8px;">
+          <div class="field">
             <label>Interval size (%)</label>
-            <input type="number" id="intervalPct" step="0.01" value="1">
+            <input id="intervalPct" type="number" step="0.01" value="1">
           </div>
-          <div style="position:relative;">
-            <label>Current Net Exposure (<span class="denomLabelShort">BTC</span>)
-              <span class="muted">(ALT + short, before LP)</span>
-            </label>
-            <div style="display:flex; gap:4px;">
-              <input type="number" id="currentE" step="0.0001" value="0" style="flex:1;">
-              <span id="fetchIndicator" style="display:none; color:var(--accent); font-size:10px; align-self:center;">Updating...</span>
-            </div>
-            <div id="fetchStatus" style="font-size:10px; color:var(--warn); margin-top:2px; height:14px;"></div>
-            <div id="p0DeltaLine" style="font-size:10px; color:var(--muted); margin-top:2px; height:14px;"></div>
+          <div class="field">
+            <label>Current Net Exposure (<span id="denomSym2">BTC</span>) <span class="muted">(ALT + short, before LP)</span></label>
+            <input id="currentE" type="number" step="0.0001" value="0">
+            <div class="inlineHelp" id="currentEHelp"></div>
           </div>
-          <div>
-            <label>Target @ P₀ (<span class="denomLabelShort">BTC</span>, auto)</label>
-            <input type="number" id="targetP0" step="0.0001" value="0" readonly>
+          <div class="field">
+            <label>Target @ P₀ (<span id="denomSym3">BTC</span>, auto)</label>
+            <input id="targetP0" type="number" step="0.0001" value="0" readonly>
+            <div class="inlineHelp" id="deltaP0Line"></div>
           </div>
-          <div>
-            <label>Target @ Pmin (<span class="denomLabelShort">BTC</span>, auto)</label>
-            <input type="number" id="targetMin" step="0.0001" value="0" readonly>
+          <div class="field">
+            <label>Target @ Pmin (<span id="denomSym4">BTC</span>, auto)</label>
+            <input id="targetMin" type="number" step="0.0001" value="0" readonly>
           </div>
-          <div>
-            <label>Target @ Pmax (<span class="denomLabelShort">BTC</span>, auto)</label>
-            <input type="number" id="targetMax" step="0.0001" value="0" readonly>
+          <div class="field">
+            <label>Target @ Pmax (<span id="denomSym5">BTC</span>, auto)</label>
+            <input id="targetMax" type="number" step="0.0001" value="0" readonly>
           </div>
-        </div>
-
-        <div class="row4" style="margin-top:6px;">
-          <div>
-            <label>Denom Current Net Exposure (<span class="denomLabelShort">BTC</span>, auto)</label>
-            <input type="number" id="denomCurrentE" step="0.0001" value="0" readonly>
-            <div id="denomFetchStatus" style="font-size:10px; color:var(--muted); margin-top:2px; height:14px;"></div>
-          </div>
-          <div>
-            <label>Denom Target Exposure (<span class="denomLabelShort">BTC</span>, manual)</label>
-            <input type="number" id="denomTargetE" step="0.0001" value="0">
-          </div>
-          <div>
-            <label>Denom Δ vs Target (<span class="denomLabelShort">BTC</span>)</label>
-            <input type="number" id="denomDeltaE" step="0.0001" value="0" readonly>
-          </div>
-          <div>
-            <label>Denom Budget for Below (max spend) (<span class="denomLabelShort">BTC</span>)</label>
-            <input type="number" id="denomBudget" step="0.0001" value="0" readonly>
+          <div class="field">
+            <label>Cap rows (optional)</label>
+            <input id="capRows" type="number" step="1" value="">
           </div>
         </div>
 
-        <div class="row4" style="margin-top:6px;">
+        <div class="toggleLine">
+          <label class="checkbox"><input type="checkbox" id="chkDual"> Dual LP</label>
+          <div class="field" style="width:90px;">
+            <label>×</label>
+            <input id="dualMult" type="number" step="0.1" value="1.0">
+          </div>
+          <label class="checkbox"><input type="checkbox" id="chkJlp"> JLP Mode (Hedged)</label>
+          <label class="checkbox"><input type="checkbox" id="chkTriple"> Triple Split (3-Way)</label>
+        </div>
+
+        <div class="row6" style="margin-top:8px;">
           <div class="field">
             <label>Precision decimals</label>
-            <input type="number" id="dec" value="6"/>
+            <input id="dec" type="number" step="1" value="6">
           </div>
           <div class="field">
-            <label>Capital ratio</label>
-            <input type="number" id="capitalRatio" step="0.01" value="1"/>
+            <label>Distribution Mode</label>
+            <select id="distMode">
+              <option value="uniform">Equal Units (Linear)</option>
+              <option value="univ3">Uniswap V3 (Constant Liquidity)</option>
+            </select>
           </div>
           <div class="field">
-            <label>Scale exposure with price?</label>
+            <label>Show zero-only rows?</label>
+            <select id="showZeros">
+              <option value="hide">Hide</option>
+              <option value="show">Show</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Assume current exposure scales with price?</label>
             <select id="scaleMode">
-              <option value="scale">Yes (value scales linearly with price)</option>
-              <option value="noscale">No (treat net exposure constant in denom terms)</option>
+              <option value="scale">Scale linearly with price (default)</option>
+              <option value="noscale">Do not scale current exposure</option>
             </select>
           </div>
           <div class="field">
-            <label>Schedule mode</label>
-            <select id="scheduleMode">
-              <option value="single">Single LP</option>
-              <option value="dual">Dual LP (Top+Bottom legs)</option>
-            </select>
+            <label>Active % (Below)</label>
+            <input id="activeBelow" type="number" step="0.1" value="10">
+          </div>
+          <div class="field">
+            <label>Active % (Above)</label>
+            <input id="activeAbove" type="number" step="0.1" value="10">
           </div>
         </div>
 
-        <div class="row4" style="margin-top:6px;">
+        <div class="row6" style="margin-top:8px;">
           <div class="field">
-            <label>APR % (optional)</label>
-            <input type="number" id="aprPct" step="0.01" value="0"/>
+            <label>APR on Active Capital (%)</label>
+            <input id="aprPct" type="number" step="0.01" value="20">
           </div>
           <div class="field">
-            <label>Max days (optional)</label>
-            <input type="number" id="maxDays" step="1" value="0"/>
+            <label>Max days in-range (for analytics)</label>
+            <input id="maxDays" type="number" step="1" value="365">
           </div>
           <div class="field">
-            <label>LP2 split % (Dual mode)</label>
-            <input type="number" id="lp2SplitPct" step="0.1" value="50"/>
+            <label>Denom Current Net Exposure (<span id="denomSym6">BTC</span>, auto)</label>
+            <input id="denomCurrentE" type="number" step="0.0001" value="0" readonly>
+            <div class="inlineHelp" id="denomFetchLine"></div>
           </div>
           <div class="field">
-            <label>LP2 range multiplier (Dual mode)</label>
-            <input type="number" id="lp2RangeMult" step="0.1" value="1.5"/>
+            <label>Denom Target Exposure (<span id="denomSym7">BTC</span>, manual)</label>
+            <input id="denomTargetE" type="number" step="0.0001" value="0">
+            <div class="inlineHelp">Use this to cap “Below” spend by denom surplus.</div>
+          </div>
+          <div class="field">
+            <label>Denom Δ vs Target (<span id="denomSym8">BTC</span>)</label>
+            <input id="denomDeltaE" type="number" step="0.0001" value="0" readonly>
+          </div>
+          <div class="field">
+            <label>Denom budget for Below (max spend) (<span id="denomSym9">BTC</span>)</label>
+            <input id="denomBudget" type="number" step="0.0001" value="0" readonly>
           </div>
         </div>
 
         <div class="sep"></div>
 
         <div class="btnbar">
-          <button id="btnFetch">Auto-load Exposure</button>
-          <button class="ghost" id="btnAutoPrices">Auto-load Prices</button>
-          <button id="btnGen">Generate Schedules</button>
-          <button class="danger" id="btnClear">Clear Outputs</button>
+          <button id="btnSched">Generate Schedules</button>
+          <button class="ghost" id="btnExpo">Generate Exposure</button>
+          <button class="ghost" id="btnPnl">Generate PnL</button>
+          <div style="flex:1"></div>
+          <button class="ghost" id="btnCaptureA">Capture Base (A)</button>
+          <button class="ghost" id="btnCaptureB">Capture Quote (B)</button>
+          <button class="danger" id="btnClear">Clear Tables</button>
         </div>
 
         <div class="hint">
-          Tip: hit <span class="kbd">Auto-load Prices</span> then <span class="kbd">Auto-load Exposure</span>, then generate. Dual mode creates two tables.
+          If the asset list shows <span class="mono">undefined</span>, your config endpoint is returning strings but the UI expects objects — this build fixes that.
         </div>
 
       </div>
-    </section>
+    </div>
 
-    <!-- Right: Outputs -->
-    <section class="card">
+    <div class="card" style="margin-top:14px;">
       <div class="hd">
-        <h2>Outputs</h2>
+        <h2>Schedule</h2>
         <div class="right">
-          <span class="pill" id="bandsPill">0 bands</span>
-          <span class="pill" id="modePill">Uniform</span>
+          <span class="pill" id="pillBands">0 bands</span>
+          <span class="pill" id="pillMode">—</span>
         </div>
       </div>
       <div class="bd">
-        <div id="outArea" class="note">No schedules generated yet.</div>
-      </div>
-    </section>
 
-  </div>
+        <div class="row4">
+          <div class="note">
+            <div class="small muted">TOTAL <span class="mono" id="kAltAboveSym">ALT</span> ABOVE</div>
+            <div class="mono" id="kAltAbove">—</div>
+          </div>
+          <div class="note">
+            <div class="small muted">TOTAL USD ABOVE</div>
+            <div class="mono" id="kUsdAbove">—</div>
+          </div>
+          <div class="note">
+            <div class="small muted">TOTAL <span class="mono" id="kDenomBelowSym">BTC</span> BELOW</div>
+            <div class="mono" id="kDenomBelow">—</div>
+          </div>
+          <div class="note">
+            <div class="small muted">TOTAL USD BELOW</div>
+            <div class="mono" id="kUsdBelow">—</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="scroll">
+          <table id="tblSchedule">
+            <thead>
+              <tr>
+                <th>Band</th>
+                <th>Range (Pa → Pb)</th>
+                <th>Type</th>
+                <th>Deployed Asset</th>
+                <th>Value (USD)</th>
+                <th>ALT Units</th>
+                <th>Net Exposure @ boundary (<span class="mono" id="thNetSym">BTC</span>)</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CROSS VIEW (placeholder) -->
+  <section id="viewCross" style="display:none;">
+    <div class="card">
+      <div class="hd"><h2>Cross-Pair Optimizer</h2></div>
+      <div class="bd">
+        <div class="note">This tab is a placeholder in this build. Your requested fixes were applied to Single LP Planner.</div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script>
-/* -------------------------
-   Helpers
--------------------------- */
-function fmt(x, d=6){
-  if(!isFinite(x)) return '';
-  return Number(x).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+/* ==========
+   CONFIG
+   ==========
+   Your Google Sheet is already being served by an Apps Script endpoint in your Vercel API.
+   This UI expects these endpoints to exist (as in your repo):
+   - /api/assets       -> returns asset list + per-asset params (from your Sheets)
+   - /api/exposure     -> returns exposures table (net_exposure_usd_from_base etc.)
+   - /api/prices       -> optional price endpoint
+*/
+
+/* ==========
+   HELPERS
+   ========== */
+function safeNum(v, d=0){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
 }
 function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
-function safeNum(x, def=0){ x=Number(x); return isFinite(x)?x:def; }
-
-/* -------------------------
-   Price fetches
--------------------------- */
+function fmt(x, d=6){
+  if(!Number.isFinite(x)) return "—";
+  return Number(x).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function setPill(el, kind, text){
+  el.textContent = text;
+  el.classList.remove('good','warn','bad');
+  if(kind==='good') el.classList.add('good');
+  if(kind==='warn') el.classList.add('warn');
+  if(kind==='bad') el.classList.add('bad');
+}
 async function fetchJson(url){
-  const r = await fetch(url);
+  const r = await fetch(url, {cache:"no-store"});
   if(!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.json();
 }
 
-async function autoFetchPrices(assetSym, denomSym){
-  try{
-    const envPill = document.getElementById('envPill');
-    envPill.textContent = location.host.includes('localhost') ? 'Local' : 'Remote';
-    const asset = (assetSym||'').toUpperCase();
-    const denom = (denomSym||'').toUpperCase();
-    if(!denom){
-      setPricePill('warn', 'Need denom');
-      return;
-    }
-    // denomUsd
-    let denomUsd = 0;
-    if(['USD','USDC','USDT'].includes(denom)) denomUsd = 1;
-    else{
-      try{
-        const px = await fetchJson(`/api/prices?pair=${encodeURIComponent(denom)}USD`);
-        denomUsd = safeNum(px.price, 0);
-      }catch(e){
-        // fallback: some APIs use -USDT
-        try{
-          const px = await fetchJson(`/api/prices?pair=${encodeURIComponent(denom)}USDT`);
-          denomUsd = safeNum(px.price, 0);
-        }catch(_){ denomUsd=0; }
-      }
-    }
-    document.getElementById('denomUsd').value = denomUsd || 0;
+/* ==========
+   STATE
+   ========== */
+const state = {
+  assets: [],      // from /api/assets
+  exposures: null, // from /api/exposure
+  prices: null,
+  capturedA: null,
+  capturedB: null,
+};
 
-    // altUsd
-    if(asset){
-      let altUsd = 0;
-      try{
-        const px2 = await fetchJson(`/api/prices?pair=${encodeURIComponent(asset)}USD`);
-        altUsd = safeNum(px2.price, 0);
-      }catch(e){
-        try{
-          const px2 = await fetchJson(`/api/prices?pair=${encodeURIComponent(asset)}USDT`);
-          altUsd = safeNum(px2.price, 0);
-        }catch(_){ altUsd=0; }
-      }
-      document.getElementById('altUsd').value = altUsd || 0;
-    }
+function getDenomSym(){ return (document.getElementById('denomSelect').value || 'BTC').toUpperCase(); }
+function getAltSym(){ return (document.getElementById('altSelect').value || '').toUpperCase(); }
+function getDenomUsd(){ return safeNum(document.getElementById('denomUsd').value, 0); }
+function getAltUsd(){ return safeNum(document.getElementById('altUsd').value, 0); }
 
-    updateP0FromUsd();
-    setPricePill('good', 'Price OK');
-  }catch(err){
-    console.error(err);
-    setPricePill('bad', 'Price fetch failed');
-  }
+/* ==========
+   UI LABELS
+   ========== */
+function syncDenomLabels(){
+  const d = getDenomSym();
+  document.getElementById('denomUsdLabel').textContent = d;
+  const ids = ['denomSym1','denomSym2','denomSym3','denomSym4','denomSym5','denomSym6','denomSym7','denomSym8','denomSym9','kDenomBelowSym','thNetSym'];
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = d;
+  });
+}
+function syncKpiSyms(){
+  document.getElementById('kAltAboveSym').textContent = getAltSym() || 'ALT';
 }
 
-function setPricePill(kind, text){
-  const pill = document.getElementById('pricePill');
-  pill.textContent = text;
-  pill.classList.remove('good','warn','bad');
-  if(kind==='good') pill.classList.add('good');
-  if(kind==='warn') pill.classList.add('warn');
-  if(kind==='bad') pill.classList.add('bad');
+/* ==========
+   TARGETS @ endpoints + P0
+   ========== */
+function updateTargetsFromPct(){
+  const port = safeNum(document.getElementById('portfolioSize').value, 0);
+  const tMinPct = safeNum(document.getElementById('targetMinPct').value, 0);
+  const tMaxPct = safeNum(document.getElementById('targetMaxPct').value, 0);
+  const targetMin = port * (tMinPct/100);
+  const targetMax = port * (tMaxPct/100);
+  document.getElementById('targetMin').value = targetMin.toFixed(6);
+  document.getElementById('targetMax').value = targetMax.toFixed(6);
+
+  updateTargetAtP0();
 }
 
-function updateDenomLabels(denomSym){
-  const denom = (denomSym||'BTC').toUpperCase();
-  const denomLabel = document.querySelectorAll('.denomLabel');
-  denomLabel.forEach(el=>el.textContent = denom);
-  const denomShort = document.querySelectorAll('.denomLabelShort');
-  denomShort.forEach(el=>el.textContent = denom);
+function computeTargetAtP0(p0, pmin, pmax, targetMin, targetMax){
+  const span = (pmax - pmin);
+  if(!(Number.isFinite(span) && Math.abs(span) > 1e-18)) return targetMin;
+  const t = clamp((p0 - pmin)/span, 0, 1);
+  return targetMin + (targetMax - targetMin)*t;
 }
 
-function updateP0FromUsd(){
-  const altUsd = Number(document.getElementById('altUsd').value) || 0;
-  const denomUsd = Number(document.getElementById('denomUsd').value) || 0;
+function updateTargetAtP0(){
+  const p0 = safeNum(document.getElementById('p0').value, 0);
+  const pmin = safeNum(document.getElementById('pmin').value, 0);
+  const pmax = safeNum(document.getElementById('pmax').value, 0);
+  const targetMin = safeNum(document.getElementById('targetMin').value, 0);
+  const targetMax = safeNum(document.getElementById('targetMax').value, 0);
+  const targetP0 = computeTargetAtP0(p0, pmin, pmax, targetMin, targetMax);
+  document.getElementById('targetP0').value = targetP0.toFixed(6);
+
+  const cur = safeNum(document.getElementById('currentE').value, 0);
+  const dec = safeNum(document.getElementById('dec').value, 6);
+  const delta = cur - targetP0;
+  const sign = delta >= 0 ? '+' : '';
+  const line = document.getElementById('deltaP0Line');
+  line.textContent = `Δ vs Target @ P₀: ${sign}${fmt(delta, dec)} ${getDenomSym()}`;
+  line.style.color = Math.abs(delta) < 1e-12 ? 'var(--muted)' : (delta > 0 ? 'var(--accent)' : 'var(--warn)');
+
+  updateDenomDelta();
+}
+
+/* ==========
+   DENOM Δ + BUDGET
+   ========== */
+function updateDenomDelta(){
+  const cur = safeNum(document.getElementById('denomCurrentE').value, 0);
+  const tgt = safeNum(document.getElementById('denomTargetE').value, 0);
+  const delta = cur - tgt;
+  document.getElementById('denomDeltaE').value = delta.toFixed(6);
+  document.getElementById('denomBudget').value = Math.max(0, delta).toFixed(6);
+  document.getElementById('denomDeltaE').style.color = delta >= 0 ? 'var(--good)' : 'var(--warn)';
+}
+
+/* ==========
+   PRICE CALC: P0 = ALT/USD ÷ denom/USD
+   ========== */
+function updateP0(){
+  const altUsd = getAltUsd();
+  const denomUsd = getDenomUsd();
   const p0El = document.getElementById('p0');
   if(altUsd>0 && denomUsd>0){
-    const ratio = altUsd/denomUsd;
-    p0El.value = ratio.toFixed(10);
-        updateAutoTargets();
+    p0El.value = (altUsd/denomUsd).toFixed(10);
+  } else {
+    p0El.value = "0";
   }
+  updateTargetAtP0();
 }
 
-function updateUsdFromP0(){
-  const p0 = Number(document.getElementById('p0').value) || 0;
-  const denomUsd = Number(document.getElementById('denomUsd').value) || 0;
-  const altUsdEl = document.getElementById('altUsd');
-  if(p0>0 && denomUsd>0){
-    const val = p0*denomUsd;
-    altUsdEl.value = val.toFixed(6);
-        updateAutoTargets();
+/* ==========
+   LOAD ASSET LIST + PARAMS (SHEETS)
+   ========== */
+function normalizeAssetListPayload(payload){
+  // Accept: {assets:[...]} OR array OR object map
+  if(Array.isArray(payload)) return payload;
+  if(payload && Array.isArray(payload.assets)) return payload.assets;
+
+  // Some endpoints might return: { data: [...] }
+  if(payload && Array.isArray(payload.data)) return payload.data;
+
+  // map of { SOL: {...}, BTC: {...} }
+  if(payload && typeof payload === 'object'){
+    const keys = Object.keys(payload);
+    if(keys.length && keys.every(k => typeof k === 'string' && k.toUpperCase()===k && k.length < 12)){
+      return keys.map(k => ({ symbol:k, ...payload[k]}));
+    }
   }
+  return [];
 }
 
-/* -------------------------
-   Exposure fetch + targets
--------------------------- */
-function updateAutoTargets() {
-    const portSize = Number(document.getElementById('portfolioSize').value) || 0;
-    const minPct = Number(document.getElementById('targetMinPct').value) || 0;
-    const maxPct = Number(document.getElementById('targetMaxPct').value) || 0;
-    const targetMinEl = document.getElementById('targetMin');
-    const targetMaxEl = document.getElementById('targetMax');
-    const tMin = portSize * (minPct / 100.0);
-    const tMax = portSize * (maxPct / 100.0);
-    if(targetMinEl) targetMinEl.value = tMin.toFixed(4);
-    if(targetMaxEl) targetMaxEl.value = tMax.toFixed(4);
-    updateTargetAtP0();
-}
+function assetRowToObject(row){
+  // We support a few formats:
+  // 1) object rows from Apps Script:
+  //    {Asset, DenomAsset, Pcurrent, Pmin, Pmax, TargetMinPct, TargetMaxPct, TargetCurPct}
+  // 2) object rows from older config:
+  //    {symbol, denomAsset, pcurrent, pmin, pmax, targetMinPct, targetMaxPct, portfolioSize}
+  // 3) array rows (unlikely here)
+  if(!row) return null;
 
-function updateDenomDelta() {
-    const curEl = document.getElementById('denomCurrentE');
-    const tgtEl = document.getElementById('denomTargetE');
-    const deltaEl = document.getElementById('denomDeltaE');
-    const budgetEl = document.getElementById('denomBudget');
-    if(!curEl || !tgtEl || !deltaEl || !budgetEl) return;
-    const cur = Number(curEl.value) || 0;
-    const tgt = Number(tgtEl.value) || 0;
-    const delta = cur - tgt;
-    deltaEl.value = (isFinite(delta) ? delta : 0).toFixed(6);
-    budgetEl.value = (isFinite(delta) ? Math.max(0, delta) : 0).toFixed(6);
-    deltaEl.style.color = (delta >= 0) ? 'var(--good)' : 'var(--warn)';
-    budgetEl.style.color = 'var(--good)';
-}
+  if(typeof row === 'string'){
+    return { symbol: row.toUpperCase() };
+  }
 
-function updateTargetAtP0() {
-    const targetP0El = document.getElementById('targetP0');
-    if(!targetP0El) return;
-
-    const pmin = Number(document.getElementById('pmin').value);
-    const pmax = Number(document.getElementById('pmax').value);
-    const p0 = Number(document.getElementById('p0').value);
-    const portSize = Number(document.getElementById('portfolioSize').value);
-    const tMinPct = Number(document.getElementById('targetMinPct').value);
-    const tMaxPct = Number(document.getElementById('targetMaxPct').value);
-    const distMode = document.getElementById('distMode').value;
-    const denomSym = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
-
-    let targetExp = 0;
-    if(pmin > 0 && pmax > pmin && p0 > 0 && portSize > 0) {
-        const units = getUnitsHeldAt(p0, pmin, pmax, portSize, tMinPct, tMaxPct, distMode);
-        targetExp = units * p0;
-    }
-    targetP0El.value = (isFinite(targetExp) ? targetExp : 0).toFixed(4);
-
-    const dec = Number(document.getElementById('dec').value) || 4;
-    const currentE = Number(document.getElementById('currentE').value) || 0;
-    const delta = currentE - targetExp;
-    const deltaLine = document.getElementById('p0DeltaLine');
-    if(deltaLine) {
-        const sign = delta >= 0 ? '+' : '';
-        deltaLine.textContent = `Δ vs Target @ P₀: ${sign}${fmt(delta, dec)} ${denomSym}`;
-        if(Math.abs(delta) < 1e-9) deltaLine.style.color = 'var(--muted)';
-        else deltaLine.style.color = (delta > 0) ? 'var(--accent)' : 'var(--warn)';
-    }
-
-    updateDenomDelta();
-}
-
-let autoFetchTimer=null;
-function triggerAutoFetch(){
-  if(autoFetchTimer) clearTimeout(autoFetchTimer);
-  autoFetchTimer = setTimeout(()=>fetchLiveExposure(), 650);
-}
-
-async function fetchLiveExposure() {
-  const assetSym = document.getElementById('assetSelect').value;
-  const denomSym = (document.getElementById('denomSelect').value || 'BTC').toUpperCase();
-  const denomUsd = Number(document.getElementById('denomUsd').value || 0);
-
-  const statusEl = document.getElementById('fetchStatus');
-  const denomStatusEl = document.getElementById('denomFetchStatus');
-  const currentEEl = document.getElementById('currentE');
-  const denomCurrentEl = document.getElementById('denomCurrentE');
-  const indEl = document.getElementById('fetchIndicator');
-
-  if(!assetSym || assetSym === "") { if(statusEl) statusEl.textContent = ''; return; }
-  if(denomUsd <= 0) return;
-  if(indEl) indEl.style.display = 'block';
-  
-  try {
-    const res = await fetch('/api/exposure');
-    if (!res.ok) throw new Error(`Error ${res.status}`);
-    const rawData = await res.json();
-    let dataList = [];
-    if (Array.isArray(rawData)) { dataList = rawData; } 
-    else if (typeof rawData === 'object' && rawData !== null) {
-        const keys = Object.keys(rawData);
-        if (keys.length > 0 && keys.every(k => k === k.toUpperCase() && k.length < 10)) {
-            dataList = keys.map(k => ({ symbol: k, ...rawData[k] }));
-        } else if (Array.isArray(rawData.table_data)) { dataList = rawData.table_data;
-        } else if (Array.isArray(rawData.data)) dataList = rawData.data;
-        else if (Array.isArray(rawData.positions)) dataList = rawData.positions;
-        else if (Array.isArray(rawData.result)) dataList = rawData.result;
-        else { dataList = [rawData]; }
-    }
-
-    const findSym = (sym) => {
-        const search = (sym || '').toUpperCase();
-        if(!search) return null;
-        return dataList.find(p => {
-            const s1 = (p.symbol || '').toUpperCase();
-            const s2 = (p.ticker || '').toUpperCase();
-            const s3 = (p.asset || '').toUpperCase();
-            const s4 = (p.name || '').toUpperCase(); 
-            return s1 === search || s2 === search || s3 === search || s4.includes(search);
-        });
+  if(Array.isArray(row)){
+    // Best effort mapping
+    return {
+      symbol: String(row[0]||'').toUpperCase(),
+      denomAsset: String(row[1]||'').toUpperCase(),
+      pcurrent: safeNum(row[2], 0),
+      pmin: safeNum(row[3], 0),
+      pmax: safeNum(row[5], 0),
+      targetMinPct: safeNum(row[7], 0),
+      targetMaxPct: safeNum(row[8], 0),
+      targetCurPct: safeNum(row[9], 0),
     };
+  }
 
-    // --- Denom current exposure (auto) ---
-    const foundDenom = findSym(denomSym);
-    if(denomCurrentEl) {
-        if(foundDenom) {
-            const denomUsdVal = Number(foundDenom.net_exposure_usd_from_base || 0);
-            if (!isNaN(denomUsdVal)) {
-                const denomUnits = denomUsdVal / denomUsd;
-                denomCurrentEl.value = denomUnits.toFixed(6);
-                if(denomStatusEl) {
-                    denomStatusEl.textContent = `Auto-Loaded: $${fmt(denomUsdVal, 0)} ${denomSym} exposure`;
-                    denomStatusEl.style.color = 'var(--good)';
-                }
-            } else if(denomStatusEl) {
-                denomStatusEl.textContent = `Found ${denomSym}, but invalid exposure.`;
-                denomStatusEl.style.color = 'var(--warn)';
-            }
-        } else if(denomStatusEl) {
-            denomStatusEl.textContent = `No position found for ${denomSym}.`;
-            denomStatusEl.style.color = 'var(--muted)';
-        }
+  // Apps Script column names
+  const sym = (row.Asset || row.asset || row.symbol || '').toString().toUpperCase();
+  const denom = (row.DenomAsset || row.denomAsset || row.Denom || row.denom || '').toString().toUpperCase();
+
+  return {
+    symbol: sym,
+    denomAsset: denom,
+    pcurrent: safeNum(row.Pcurrent ?? row.pcurrent ?? row.price ?? row.P0, 0),
+    pmin: safeNum(row.Pmin ?? row.pmin, 0),
+    pmax: safeNum(row.Pmax ?? row.pmax, 0),
+    targetMinPct: safeNum(row.TargetMinPct ?? row.targetMinPct ?? row.target_min_pct, 0),
+    targetMaxPct: safeNum(row.TargetMaxPct ?? row.targetMaxPct ?? row.target_max_pct, 0),
+    targetCurPct: safeNum(row.TargetCurPct ?? row.targetCurPct ?? row.target_cur_pct, 0),
+    // optional prefilled portfolio size fields
+    portfolioSize: safeNum(row.PortfolioSize ?? row.portfolioSize, 0),
+  };
+}
+
+async function loadAssetsFromSheets(){
+  const pillSheets = document.getElementById('pillSheets');
+  setPill(pillSheets,'warn','Sheets: loading…');
+
+  try{
+    // This endpoint should return rows from your "LP_Parameters" sheet.
+    // Your screenshot shows a deployed Apps Script proxy, but in your Vercel app this should be /api/assets.
+    const payload = await fetchJson('/api/assets');
+    const list = normalizeAssetListPayload(payload);
+    const parsed = list.map(assetRowToObject).filter(a=>a && a.symbol);
+
+    state.assets = parsed;
+
+    // Populate alt dropdown
+    const altSel = document.getElementById('altSelect');
+    altSel.innerHTML = '';
+    parsed.forEach(a=>{
+      const opt = document.createElement('option');
+      opt.value = a.symbol;
+      opt.textContent = a.symbol;
+      altSel.appendChild(opt);
+    });
+
+    // Populate denom dropdown: include unique denom assets + also allow manual standard
+    const denomSel = document.getElementById('denomSelect');
+    const uniqDenoms = [...new Set(parsed.map(a=>a.denomAsset).filter(Boolean))];
+    denomSel.innerHTML = '';
+    uniqDenoms.forEach(d=>{
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      denomSel.appendChild(opt);
+    });
+    // Ensure BTC exists
+    if(!uniqDenoms.includes('BTC')){
+      const opt = document.createElement('option');
+      opt.value='BTC'; opt.textContent='BTC';
+      denomSel.appendChild(opt);
     }
 
-    // --- Numerator current exposure (auto) ---
-    const foundAsset = findSym(assetSym);
-    let assetUpdated = false;
-    if (foundAsset) {
-        const usdVal = Number(foundAsset.net_exposure_usd_from_base || 0);
-        if (!isNaN(usdVal) && usdVal !== 0) {
-            const denomExposure = usdVal / denomUsd;
-            if(currentEEl) currentEEl.value = denomExposure.toFixed(6);
-            if(statusEl) {
-                statusEl.textContent = `Auto-Loaded: $${fmt(usdVal, 0)} exposure`;
-                statusEl.style.color = 'var(--good)';
-            }
-            assetUpdated = true;
-        } else if(statusEl) {
-            statusEl.textContent = `Found ${assetSym}, but 0 exposure.`;
-            statusEl.style.color = 'var(--warn)';
-        }
-    } else if(statusEl) {
-        statusEl.textContent = `No position found for ${assetSym}.`;
-        statusEl.style.color = 'var(--muted)';
+    // select first asset by default
+    if(parsed.length){
+      altSel.value = parsed[0].symbol;
+      // denom default = asset's denom if present else BTC
+      denomSel.value = parsed[0].denomAsset || 'BTC';
     }
 
-    updateTargetAtP0();
-    if(assetUpdated) generate();
+    setPill(pillSheets,'good',`Sheets: ${parsed.length} assets`);
+    syncDenomLabels();
+    syncKpiSyms();
 
-  } catch (err) {
+    // Load selected asset params into inputs
+    await applySelectedAssetParams();
+    await fetchExposures();
+    await fetchPricesBestEffort();
+
+  }catch(err){
     console.error(err);
-    if(statusEl) {
-        statusEl.textContent = `Fetch failed: ${err.message}`;
-        statusEl.style.color = 'var(--bad)';
-    }
-    if(denomStatusEl) {
-        denomStatusEl.textContent = `Fetch failed: ${err.message}`;
-        denomStatusEl.style.color = 'var(--bad)';
-    }
-  } finally {
-    if(indEl) indEl.style.display = 'none';
+    setPill(pillSheets,'bad','Sheets: failed');
+    document.getElementById('altHelp').textContent = `Failed to load /api/assets: ${err.message}`;
+    document.getElementById('altHelp').style.color = 'var(--bad)';
   }
 }
 
-/* -------------------------
-   Bands builder
--------------------------- */
-function buildBands(pmin, pmax, p0, stepPct){
-  const step = stepPct/100.0;
+/* ==========
+   APPLY SELECTED ASSET PARAMS
+   ========== */
+async function applySelectedAssetParams(){
+  const sym = getAltSym();
+  const denom = getDenomSym();
+  const a = state.assets.find(x=>x.symbol===sym);
+
+  if(!a){
+    document.getElementById('altHelp').textContent = `No config row for ${sym}`;
+    document.getElementById('altHelp').style.color = 'var(--warn)';
+    return;
+  }
+
+  // If denom differs from config denom, set denom select to config denom (common expected behavior)
+  if(a.denomAsset && a.denomAsset !== denom){
+    document.getElementById('denomSelect').value = a.denomAsset;
+    syncDenomLabels();
+  }
+
+  document.getElementById('pmin').value = a.pmin || 0;
+  document.getElementById('pmax').value = a.pmax || 0;
+
+  if(a.portfolioSize && a.portfolioSize>0){
+    document.getElementById('portfolioSize').value = a.portfolioSize;
+  }
+
+  document.getElementById('targetMinPct').value = a.targetMinPct ?? 0;
+  document.getElementById('targetMaxPct').value = a.targetMaxPct ?? 0;
+
+  // We treat Pcurrent from sheet as P0 in ALT/denom terms.
+  // But we still compute p0 from USD prices when available; if USD prices are 0, fall back to Pcurrent.
+  if(a.pcurrent && a.pcurrent>0){
+    // will only be used if we can't compute from USD prices
+    document.getElementById('p0').dataset.fallback = String(a.pcurrent);
+  } else {
+    document.getElementById('p0').dataset.fallback = '0';
+  }
+
+  updateTargetsFromPct();
+  document.getElementById('altHelp').textContent = `Loaded params for ${sym} / ${a.denomAsset || denom}`;
+  document.getElementById('altHelp').style.color = 'var(--good)';
+}
+
+/* ==========
+   EXPOSURES (AUTO)
+   ========== */
+function normalizeExposurePayload(raw){
+  // Your exposure endpoint can return:
+  // - array of objects
+  // - object map
+  // - {table_data:[...]} / {data:[...]} / {positions:[...]} / {result:[...]}
+  if(Array.isArray(raw)) return raw;
+  if(raw && typeof raw === 'object'){
+    if(Array.isArray(raw.table_data)) return raw.table_data;
+    if(Array.isArray(raw.data)) return raw.data;
+    if(Array.isArray(raw.positions)) return raw.positions;
+    if(Array.isArray(raw.result)) return raw.result;
+
+    const keys = Object.keys(raw);
+    if(keys.length && keys.every(k => k.toUpperCase()===k && k.length<12)){
+      return keys.map(k => ({symbol:k, ...raw[k]}));
+    }
+  }
+  return [];
+}
+
+function findExposureBySymbol(list, sym){
+  const s = (sym||'').toUpperCase();
+  return list.find(p=>{
+    const a = (p.symbol||p.ticker||p.asset||p.name||'').toString().toUpperCase();
+    return a === s || a.includes(s);
+  });
+}
+
+async function fetchExposures(){
+  try{
+    const raw = await fetchJson('/api/exposure');
+    const list = normalizeExposurePayload(raw);
+    state.exposures = list;
+
+    // auto-load numerator exposure in denom units:
+    // We expect net exposure in USD field: net_exposure_usd_from_base (as in your old app)
+    const altSym = getAltSym();
+    const denomSym = getDenomSym();
+    const denomUsd = getDenomUsd();
+
+    // denomUsd might be 0 right now; we'll still store USD and fill units later
+    const altRow = findExposureBySymbol(list, altSym);
+    const denomRow = findExposureBySymbol(list, denomSym);
+
+    if(altRow){
+      const usdVal = safeNum(altRow.net_exposure_usd_from_base ?? altRow.netExposureUsd ?? altRow.exposureUsd ?? altRow.usd, 0);
+      if(denomUsd>0){
+        document.getElementById('currentE').value = (usdVal/denomUsd).toFixed(6);
+        document.getElementById('currentEHelp').textContent = `Auto-Loaded: $${fmt(usdVal,0)} exposure`;
+        document.getElementById('currentEHelp').style.color = 'var(--good)';
+      }else{
+        // store USD in dataset until prices load
+        document.getElementById('currentE').dataset.usd = String(usdVal);
+        document.getElementById('currentEHelp').textContent = `Loaded USD exposure: $${fmt(usdVal,0)} (waiting for denom/USD)`;
+        document.getElementById('currentEHelp').style.color = 'var(--warn)';
+      }
+    }else{
+      document.getElementById('currentEHelp').textContent = `No exposure row found for ${altSym}`;
+      document.getElementById('currentEHelp').style.color = 'var(--muted)';
+    }
+
+    if(denomRow){
+      const usdVal = safeNum(denomRow.net_exposure_usd_from_base ?? denomRow.netExposureUsd ?? denomRow.exposureUsd ?? denomRow.usd, 0);
+      if(denomUsd>0){
+        document.getElementById('denomCurrentE').value = (usdVal/denomUsd).toFixed(6);
+        document.getElementById('denomFetchLine').textContent = `Auto-Loaded denom: $${fmt(usdVal,0)}`;
+        document.getElementById('denomFetchLine').style.color = 'var(--good)';
+      }else{
+        document.getElementById('denomCurrentE').dataset.usd = String(usdVal);
+        document.getElementById('denomFetchLine').textContent = `Loaded denom USD: $${fmt(usdVal,0)} (waiting for denom/USD)`;
+        document.getElementById('denomFetchLine').style.color = 'var(--warn)';
+      }
+    }else{
+      document.getElementById('denomFetchLine').textContent = `No denom exposure row found for ${denomSym}`;
+      document.getElementById('denomFetchLine').style.color = 'var(--muted)';
+    }
+
+    updateTargetAtP0();
+  }catch(err){
+    console.error(err);
+    document.getElementById('currentEHelp').textContent = `Exposure fetch failed: ${err.message}`;
+    document.getElementById('currentEHelp').style.color = 'var(--bad)';
+    document.getElementById('denomFetchLine').textContent = `Exposure fetch failed: ${err.message}`;
+    document.getElementById('denomFetchLine').style.color = 'var(--bad)';
+  }
+}
+
+/* ==========
+   PRICES (AUTO) best-effort
+   ========== */
+async function fetchPricesBestEffort(){
+  const pillPrices = document.getElementById('pillPrices');
+  setPill(pillPrices,'warn','Prices: loading…');
+
+  const alt = getAltSym();
+  const denom = getDenomSym();
+
+  // If you have a /api/prices endpoint, we use it.
+  // Otherwise user can type manually.
+  try{
+    const data = await fetchJson(`/api/prices?alt=${encodeURIComponent(alt)}&denom=${encodeURIComponent(denom)}`);
+    // expected: {altUsd, denomUsd, jlpUsd?}
+    if(data && (data.altUsd || data.denomUsd)){
+      if(data.altUsd) document.getElementById('altUsd').value = safeNum(data.altUsd,0);
+      if(data.denomUsd) document.getElementById('denomUsd').value = safeNum(data.denomUsd,0);
+      if(data.jlpUsd) document.getElementById('jlpUsd').value = safeNum(data.jlpUsd,0);
+      setPill(pillPrices,'good','Prices: loaded');
+    }else{
+      setPill(pillPrices,'warn','Prices: manual');
+    }
+  }catch(err){
+    // fallback to manual
+    setPill(pillPrices,'warn','Prices: manual');
+  }
+
+  // Compute p0 from USD prices if possible, else fallback to sheet pcurrent
+  const altUsd = getAltUsd();
+  const denomUsd = getDenomUsd();
+  const p0El = document.getElementById('p0');
+
+  if(altUsd>0 && denomUsd>0){
+    p0El.value = (altUsd/denomUsd).toFixed(10);
+  }else{
+    const fb = safeNum(p0El.dataset.fallback, 0);
+    p0El.value = (fb>0 ? fb : 0);
+  }
+
+  // If we previously stored USD exposures, convert now.
+  if(denomUsd>0){
+    const ce = document.getElementById('currentE');
+    if(ce.dataset.usd){
+      const usdVal = safeNum(ce.dataset.usd, 0);
+      ce.value = (usdVal/denomUsd).toFixed(6);
+      delete ce.dataset.usd;
+      document.getElementById('currentEHelp').textContent = `Auto-Loaded: $${fmt(usdVal,0)} exposure`;
+      document.getElementById('currentEHelp').style.color = 'var(--good)';
+    }
+    const de = document.getElementById('denomCurrentE');
+    if(de.dataset.usd){
+      const usdVal = safeNum(de.dataset.usd, 0);
+      de.value = (usdVal/denomUsd).toFixed(6);
+      delete de.dataset.usd;
+      document.getElementById('denomFetchLine').textContent = `Auto-Loaded denom: $${fmt(usdVal,0)}`;
+      document.getElementById('denomFetchLine').style.color = 'var(--good)';
+    }
+  }
+
+  updateTargetsFromPct();
+  updateP0();
+}
+
+/* ==========
+   BAND BUILDER (multiplicative)
+   ========== */
+function buildBands(pmin,pmax,p0,stepPct){
+  const step = stepPct/100;
   const down=[], up=[];
-  // build down from p0 to pmin with multiplicative steps
   let p = p0;
   while(p>pmin*(1+1e-12)){
     const next = p/(1+step);
     const pa = Math.max(next, pmin);
     const pb = p;
-    down.push({pa, pb});
+    down.push({pa,pb});
     p = pa;
-    if(down.length>2000) break;
+    if(down.length>6000) break;
   }
-  // build up from p0 to pmax
   p = p0;
   while(p<pmax*(1-1e-12)){
     const next = p*(1+step);
     const pa = p;
     const pb = Math.min(next, pmax);
-    up.push({pa, pb});
+    up.push({pa,pb});
     p = pb;
-    if(up.length>2000) break;
+    if(up.length>6000) break;
   }
-  return {down, up};
+  return {down,up};
 }
 
-/* -------------------------
-   Target curve helper (used for display and P0 target)
--------------------------- */
-function getUnitsHeldAt(p, pmin, pmax, portfolioSize, minPct, maxPct, distMode){
-  const valMin = portfolioSize*(minPct/100);
-  const valMax = portfolioSize*(maxPct/100);
-  if(distMode === 'univ3'){
-    // interpret as constant liquidity between pmin and pmax with no quote below p0 and no base above p0
-    // We'll solve for L such that value at endpoints match and interpolate.
-    // For simplicity, treat as linear in value when outside range.
-    // Within range: holdings are x(p)*p where x(p)=L*(1/sqrt(p)-1/sqrt(pmax)).
-    // We'll compute L using x(pmin)*pmin = valMin and x(pmax)*pmax = valMax (x(pmax)=0).
-    // This becomes valMax ~ 0 at pmax in a pure univ3 full-range, so we fall back to linear.
-    // Practically, use linear target between endpoints:
-    const t = (p - pmin)/(pmax - pmin);
-    const targetVal = valMin + (valMax - valMin)*clamp(t,0,1);
-    return targetVal / p;
-  }else{
-    // uniform: linear value interpolation between endpoints.
-    const t = (p - pmin)/(pmax - pmin);
-    const targetVal = valMin + (valMax - valMin)*clamp(t,0,1);
-    return targetVal / p;
-  }
-}
+/* ==========
+   STRATEGY MATH (FIXED BELOW REVALUATION + denom budget cap)
+   ==========
+   Key fix: Below-side must accumulate ALT UNITS and revalue them as price moves lower.
+   Previous broken version tracked only USD converted at each band and didn't reprice.
+*/
+function computeSchedule(){
+  const alt = getAltSym();
+  const denom = getDenomSym();
+  const denomUsd = getDenomUsd();
+  const p0 = safeNum(document.getElementById('p0').value, 0);
+  const pmin = safeNum(document.getElementById('pmin').value, 0);
+  const pmax = safeNum(document.getElementById('pmax').value, 0);
+  const stepPct = safeNum(document.getElementById('intervalPct').value, 1);
+  const capRowsRaw = document.getElementById('capRows').value;
+  const capRows = capRowsRaw ? parseInt(capRowsRaw,10) : null;
 
-/* -------------------------
-   Core schedule math (FIXED)
--------------------------- */
-function calculateStrategy(params, manualBands) {
-  const {
-    pmin, pmax, p0, stepPct, portfolioSize, targetMinPct, targetMaxPct, currentE,
-    denomSymbol, denomUsd, assetSymbol, scaleMode, distMode,
-    denomCurrentE, denomTargetE
-  } = params;
+  const portfolioSize = safeNum(document.getElementById('portfolioSize').value, 0);
+  const targetMinPct = safeNum(document.getElementById('targetMinPct').value, 0);
+  const targetMaxPct = safeNum(document.getElementById('targetMaxPct').value, 0);
 
-  if(!manualBands && !(pmin>0 && pmax>pmin && p0>0)) return null;
-  let bands = manualBands;
-  if (!bands) { bands = buildBands(pmin, pmax, p0, stepPct); }
-  const Ndown = bands.down.length, Nup = bands.up.length;
+  const targetMin = portfolioSize * (targetMinPct/100);
+  const targetMax = portfolioSize * (targetMaxPct/100);
 
-  const effectivePmin = (pmin > 0) ? pmin : (bands.down.length > 0 ? bands.down[bands.down.length-1].pa : 0);
-  const effectivePmax = (pmax > 0) ? pmax : (bands.up.length > 0 ? bands.up[bands.up.length-1].pb : 0);
+  const currentE = safeNum(document.getElementById('currentE').value, 0);
+  const scaleMode = document.getElementById('scaleMode').value;
+  const distMode = document.getElementById('distMode').value;
 
-  const scaleFactorAt = (px) => (scaleMode === 'scale' && p0 > 0) ? (px/p0) : 1;
+  const denomCurrentE = safeNum(document.getElementById('denomCurrentE').value, 0);
+  const denomTargetE = safeNum(document.getElementById('denomTargetE').value, 0);
+  const denomBudget = Math.max(0, denomCurrentE - denomTargetE);
 
-  const targetMin = portfolioSize * targetMinPct / 100;
-  const targetMax = portfolioSize * targetMaxPct / 100;
-
-  const currentAtMin = currentE * scaleFactorAt(effectivePmin);
-  const currentAtMax = currentE * scaleFactorAt(effectivePmax);
-
-  const needMinDeltaDenom = (targetMin - currentAtMin);
-  const needSellDeltaDenom = (currentAtMax - targetMax);
-
-  // Units that must be bought (below) or sold (above) to hit endpoints.
-  const needBuyUnitsTotal = (needMinDeltaDenom > 0 && effectivePmin > 0) ? (needMinDeltaDenom / effectivePmin) : 0;
-  let needSellUnitsTotal = (needSellDeltaDenom > 0 && effectivePmax > 0) ? (needSellDeltaDenom / effectivePmax) : 0;
-
-  // Denom budget: only allow spending denom surplus (current - target) on the below side.
-  let denomBudget = Infinity;
-  if (isFinite(denomCurrentE) && isFinite(denomTargetE)) {
-    denomBudget = Math.max(0, denomCurrentE - denomTargetE);
+  // validation
+  if(!(pmin>0 && pmax>pmin && p0>=pmin && p0<=pmax)){
+    throw new Error("Invalid price range: need 0 < Pmin ≤ P0 ≤ Pmax and Pmax > Pmin.");
   }
 
-  // Above-side shorting: allow only if targetMax is negative (explicit short target).
-  const buyShortAllowed = (targetMax < 0);
+  const bands = buildBands(pmin,pmax,p0,stepPct);
+  const Ndown = bands.down.length;
+  const Nup = bands.up.length;
 
-  // Holdings available to fund above-side sells (in asset units at P₀).
-  const currentUnitsAtP0 = (p0 > 0) ? (currentE / p0) : 0;
-  const holdingsAvailUnits = Math.max(currentUnitsAtP0, 0);
+  const scaleFactorAt = (px)=> (scaleMode==="scale" ? (px/p0) : 1);
 
-  if (!buyShortAllowed) {
-    needSellUnitsTotal = Math.min(needSellUnitsTotal, holdingsAvailUnits);
-  }
+  // ---- BELOW: solve for spending that reaches targetMin at pmin
+  // Let boughtUnitsTotal = Σ_i quote_i/(sqrt(pa*pb)).
+  // Net at pmin: baseE(pmin) + boughtUnitsTotal * pmin
+  const currentAtMin = currentE * scaleFactorAt(pmin);
+  const needMinDelta = targetMin - currentAtMin; // denom units
 
-  // ---- BELOW sizing ----
-  let perQuoteBelow = 0;     // equal-quote mode (quote per band)
-  let L_Below = 0;           // UniV3 mode (liquidity)
+  // Need to buy units at pmin:
+  const needBuyUnitsTotal = (needMinDelta > 0 ? (needMinDelta / pmin) : 0);
+
+  let perQuoteBelow = 0;
+  let Lbelow = 0;
   let belowQuoteRequired = 0;
   let belowQuoteUsed = 0;
 
-  if (Ndown > 0 && needBuyUnitsTotal > 0) {
-    if (distMode === 'univ3') {
-      const termUnits = (1/Math.sqrt(effectivePmin)) - (1/Math.sqrt(p0));
-      if (termUnits > 0) L_Below = needBuyUnitsTotal / termUnits;
+  if(Ndown>0 && needBuyUnitsTotal>0){
+    if(distMode === 'univ3'){
+      // Units from constant liquidity between pmin and p0:
+      // units = L * (1/sqrt(pmin) - 1/sqrt(p0))
+      const termUnits = (1/Math.sqrt(pmin)) - (1/Math.sqrt(p0));
+      Lbelow = termUnits>0 ? (needBuyUnitsTotal/termUnits) : 0;
+      // Quote required = L*(sqrt(p0)-sqrt(pmin))
+      belowQuoteRequired = Lbelow * (Math.sqrt(p0) - Math.sqrt(pmin));
 
-      belowQuoteRequired = L_Below * (Math.sqrt(p0) - Math.sqrt(effectivePmin));
-      let scale = 1;
-      if (isFinite(denomBudget) && belowQuoteRequired > 0) scale = Math.min(1, denomBudget / belowQuoteRequired);
-      L_Below *= scale;
+      let scale=1;
+      if(Number.isFinite(denomBudget) && belowQuoteRequired>0) scale = Math.min(1, denomBudget / belowQuoteRequired);
+      Lbelow *= scale;
       belowQuoteUsed = belowQuoteRequired * scale;
-    } else {
+    }else{
+      // uniform equal-quote per band, units per band = quote/(sqrt(pa*pb))
       let sumUnitsPerQuote = 0;
-      for (const b of bands.down) {
-        sumUnitsPerQuote += 1 / (Math.sqrt(b.pa) * Math.sqrt(b.pb));
+      for(const b of bands.down){
+        sumUnitsPerQuote += 1/(Math.sqrt(b.pa)*Math.sqrt(b.pb));
       }
-      perQuoteBelow = sumUnitsPerQuote > 0 ? (needBuyUnitsTotal / sumUnitsPerQuote) : 0;
+      perQuoteBelow = sumUnitsPerQuote>0 ? (needBuyUnitsTotal / sumUnitsPerQuote) : 0;
       belowQuoteRequired = perQuoteBelow * Ndown;
 
-      let scale = 1;
-      if (isFinite(denomBudget) && belowQuoteRequired > 0) scale = Math.min(1, denomBudget / belowQuoteRequired);
+      let scale=1;
+      if(Number.isFinite(denomBudget) && belowQuoteRequired>0) scale = Math.min(1, denomBudget / belowQuoteRequired);
       perQuoteBelow *= scale;
       belowQuoteUsed = belowQuoteRequired * scale;
     }
   }
 
-  // ---- ABOVE sizing ----
-  let unitsPerBandAbove = 0; // equal-units mode
-  let L_Above = 0;           // UniV3 mode
-  if (Nup > 0 && needSellUnitsTotal > 0) {
-    if (distMode === 'univ3') {
-      const term = (1/Math.sqrt(p0)) - (1/Math.sqrt(effectivePmax));
-      if (term > 0) L_Above = needSellUnitsTotal / term;
-    } else {
-      unitsPerBandAbove = needSellUnitsTotal / Nup;
+  // ---- ABOVE: solve for selling that reaches targetMax at pmax
+  const currentAtMax = currentE * scaleFactorAt(pmax);
+  const needSellDelta = currentAtMax - targetMax; // denom units to subtract by selling units
+  const needSellUnitsTotal = (needSellDelta > 0 ? (needSellDelta / pmax) : 0);
+
+  // Allow buy+short only if targetMax is negative
+  const buyShortAllowed = (targetMax < 0);
+  const currentUnitsAtP0 = p0>0 ? (currentE/p0) : 0;
+  const holdingsAvailUnits = Math.max(currentUnitsAtP0, 0);
+  let sellUnitsTotalClamped = needSellUnitsTotal;
+  if(!buyShortAllowed){
+    sellUnitsTotalClamped = Math.min(needSellUnitsTotal, holdingsAvailUnits);
+  }
+
+  let unitsPerBandAbove = 0;
+  let Labove = 0;
+  if(Nup>0 && sellUnitsTotalClamped>0){
+    if(distMode === 'univ3'){
+      const term = (1/Math.sqrt(p0)) - (1/Math.sqrt(pmax));
+      Labove = term>0 ? (sellUnitsTotalClamped/term) : 0;
+    }else{
+      unitsPerBandAbove = sellUnitsTotalClamped / Nup;
     }
   }
 
   // ---- Build rows ----
   const rows = [];
-  let belowTotal = 0;
-  let aboveTotalQuote = 0;
-  let aboveTotalUnits = 0;
+  let totalUsdBelow = 0;
+  let totalUsdAbove = 0;
+  let totalDenomBelow = 0;
+  let totalAltAboveUnits = 0;
 
-  // Below (price moving down): accumulate bought units and revalue at the current boundary price.
+  // BELOW: accumulate bought units and revalue at boundary price
   let cumBoughtUnits = 0;
-  for (let i = 0; i < bands.down.length; i++) {
+  for(let i=0;i<Ndown;i++){
     const b = bands.down[i];
-    let quote = 0, units = 0;
-    if (needBuyUnitsTotal > 0) {
-      if (distMode === 'univ3') {
-        quote = L_Below * (Math.sqrt(b.pb) - Math.sqrt(b.pa));
-        units = L_Below * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
-      } else {
+    let quote=0, units=0;
+    if(needBuyUnitsTotal>0){
+      if(distMode==='univ3'){
+        quote = Lbelow * (Math.sqrt(b.pb) - Math.sqrt(b.pa));
+        units = Lbelow * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
+      }else{
         quote = perQuoteBelow;
-        units = quote / (Math.sqrt(b.pa) * Math.sqrt(b.pb));
+        units = quote / (Math.sqrt(b.pa)*Math.sqrt(b.pb));
       }
     }
-    belowTotal += quote;
-    cumBoughtUnits += units;
 
-    const boundaryPx = b.pa;
-    const currentUnitsAtBoundary = (currentE * scaleFactorAt(boundaryPx)) / boundaryPx;
-    const netUnits = currentUnitsAtBoundary + cumBoughtUnits;
-    const netAtBoundary = netUnits * boundaryPx;
+    cumBoughtUnits += units;
+    totalDenomBelow += quote;
+    totalUsdBelow += quote * denomUsd;
+
+    const boundary = b.pa;
+    const baseE = currentE * scaleFactorAt(boundary);
+    const baseUnits = boundary>0 ? (baseE / boundary) : 0;
+    const netUnits = baseUnits + cumBoughtUnits;
+    const netAtBoundary = netUnits * boundary;
 
     rows.push({
-      bandIdx: b.origIdx || (i + 1),
-      pa: b.pa, pb: b.pb, type: 'Below',
-      deployUSD: quote,
-      deployAltUsd: 0,
-      sourceTag: '',
-      altUnitsAbove: 0,
-      netAtBoundary
+      band: i+1,
+      pa: b.pa, pb: b.pb,
+      type: "↓",
+      deployedAsset: denom,
+      deployDenom: quote,
+      deployUsd: quote * denomUsd,
+      altUnits: units,
+      netAtBoundary,
+      sourceHtml: ""
     });
+
+    if(capRows && rows.length>=capRows) break;
   }
 
-  // Above (price moving up): accumulate sold units and revalue remaining units at the current boundary price.
+  // ABOVE: accumulate sold units and value quote received; revalue remaining units at boundary
   let cumSoldUnits = 0;
-  let holdingsRemainingUnits = holdingsAvailUnits;
-  for (let j = 0; j < bands.up.length; j++) {
+  let holdingsRemaining = holdingsAvailUnits;
+  for(let j=0;j<Nup;j++){
     const b = bands.up[j];
-    let units = 0;
-    if (needSellUnitsTotal > 0) {
-      if (distMode === 'univ3') {
-        units = L_Above * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
-      } else {
+    let units=0;
+    if(sellUnitsTotalClamped>0){
+      if(distMode==='univ3'){
+        units = Labove * (1/Math.sqrt(b.pa) - 1/Math.sqrt(b.pb));
+      }else{
         units = unitsPerBandAbove;
       }
     }
 
     cumSoldUnits += units;
-    aboveTotalUnits += units;
+    totalAltAboveUnits += units;
 
-    const quoteOut = units * Math.sqrt(b.pa * b.pb);
-    aboveTotalQuote += quoteOut;
+    // Quote received at geometric mean price √(pa*pb)
+    const quoteOut = units * Math.sqrt(b.pa*b.pb);
+    totalUsdAbove += quoteOut * denomUsd;
 
-    let sourceTag = '';
-    if (units > 0) {
-      if (holdingsRemainingUnits <= 1e-12) {
-        sourceTag = '<span class="tag source">Buy+Short</span>';
-      } else if (units <= holdingsRemainingUnits + 1e-12) {
-        sourceTag = '<span class="tag hold">Holdings</span>';
-        holdingsRemainingUnits -= units;
-      } else {
-        sourceTag = '<span class="tag hold">Holdings</span><span class="tag source">+Short</span>';
-        holdingsRemainingUnits = 0;
+    let sourceHtml = "";
+    if(units>0){
+      if(holdingsRemaining<=1e-12){
+        sourceHtml = `<span class="tag source">Buy+Short</span>`;
+      }else if(units <= holdingsRemaining + 1e-12){
+        sourceHtml = `<span class="tag hold">Holdings</span>`;
+        holdingsRemaining -= units;
+      }else{
+        sourceHtml = `<span class="tag hold">Holdings</span><span class="tag source">+Short</span>`;
+        holdingsRemaining = 0;
+      }
+      if(!buyShortAllowed && sourceHtml.includes("Short")){
+        sourceHtml = `<span class="tag bad">Not allowed</span>`;
       }
     }
 
-    const boundaryPx = b.pb;
-    const currentUnitsAtBoundary = (currentE * scaleFactorAt(boundaryPx)) / boundaryPx;
-    const netUnits = currentUnitsAtBoundary - cumSoldUnits;
-    const netAtBoundary = netUnits * boundaryPx;
+    const boundary = b.pb;
+    const baseE = currentE * scaleFactorAt(boundary);
+    const baseUnits = boundary>0 ? (baseE / boundary) : 0;
+    const netUnits = baseUnits - cumSoldUnits;
+    const netAtBoundary = netUnits * boundary;
 
     rows.push({
-      bandIdx: b.origIdx || (Ndown + j + 1),
-      pa: b.pa, pb: b.pb, type: 'Above',
-      deployUSD: 0,
-      deployAltUsd: quoteOut,
-      sourceTag,
-      altUnitsAbove: units,
-      netAtBoundary
+      band: Ndown + j + 1,
+      pa: b.pa, pb: b.pb,
+      type: "↑",
+      deployedAsset: alt,
+      deployDenom: quoteOut,
+      deployUsd: quoteOut * denomUsd,
+      altUnits: units,
+      netAtBoundary,
+      sourceHtml
     });
+
+    if(capRows && rows.length>=capRows) break;
   }
 
-  // Residuals (0 means schedule hits the endpoint targets in denom terms).
-  const boughtUnitsTotal = cumBoughtUnits;
-  const soldUnitsTotal = cumSoldUnits;
-  const residualMin = (effectivePmin > 0) ? (targetMin - (currentAtMin + boughtUnitsTotal * effectivePmin)) : 0;
-  const residualMax = (effectivePmax > 0) ? (targetMax - (currentAtMax - soldUnitsTotal * effectivePmax)) : 0;
+  // Residuals (how close we got to targets at endpoints)
+  const residualMin = (targetMin - (currentAtMin + (cumBoughtUnits*pmin)));
+  const residualMax = (targetMax - (currentAtMax - (cumSoldUnits*pmax)));
 
   return {
     rows,
-    kpi: {
-      Ndown, Nup,
-      belowTotal,
-      aboveTotalQuote,
-      aboveTotalUnits,
+    totals: {
+      denomBelow: totalDenomBelow,
+      usdBelow: totalUsdBelow,
+      usdAbove: totalUsdAbove,
+      altAboveUnits: totalAltAboveUnits,
       denomBudget,
       belowQuoteRequired,
       belowQuoteUsed,
       residualMin,
       residualMax
-    },
-    rawBands: bands
+    }
   };
 }
 
-function renderLPSection(title, strat){
-  const dec = Number(document.getElementById('dec').value)||6;
-  const denomUsd = strat.denomUsd || 0;
-  const denomSymbol = (strat.denomSymbol||'').toUpperCase();
+/* ==========
+   RENDER SCHEDULE TABLE
+   ========== */
+function renderSchedule(result){
+  const tbody = document.querySelector('#tblSchedule tbody');
+  tbody.innerHTML = '';
 
-  const result = calculateStrategy(strat);
-  if(!result) return `<div class="note">Invalid inputs for ${title}</div>`;
-  const {rows, kpi} = result;
+  const dec = safeNum(document.getElementById('dec').value, 6);
+  const denom = getDenomSym();
+  const alt = getAltSym();
 
-  const below = rows.filter(r=>r.type==='Below');
-  const above = rows.filter(r=>r.type==='Above');
+  let shown = 0;
+  const showZeros = document.getElementById('showZeros').value === 'show';
 
-  const totalBelowDenom = below.reduce((a,b)=>a+(b.deployUSD||0),0);
-  const totalAboveDenom = above.reduce((a,b)=>a+(b.deployAltUsd||0),0);
-  const totalAboveUnits = above.reduce((a,b)=>a+(b.altUnitsAbove||0),0);
+  for(const r of result.rows){
+    const nonZero = Math.abs(r.deployDenom) > 1e-15 || Math.abs(r.altUnits) > 1e-15;
+    if(!showZeros && !nonZero) continue;
 
-  const bandsPill = document.getElementById('bandsPill');
-  if(bandsPill){
-    bandsPill.textContent = `${(below.length+above.length)} bands`;
-  }
-  const modePill = document.getElementById('modePill');
-  if(modePill){
-    const m = strat.distMode === 'univ3' ? 'UniV3' : 'Uniform';
-    modePill.textContent = m;
-  }
-
-  let html = `<div class="note"><b>${title}</b><div class="small muted">
-    Denom: ${denomSymbol} &nbsp;|&nbsp; ALT: ${strat.assetSymbol} &nbsp;|&nbsp; Scale: ${strat.scaleMode}
-  </div>
-  <div class="small muted">
-    Total Below: ${fmt(totalBelowDenom,dec)} ${denomSymbol} ($${fmt(totalBelowDenom*denomUsd,2)})
-    &nbsp;|&nbsp;
-    Total Above: ${fmt(totalAboveDenom,dec)} ${denomSymbol} ($${fmt(totalAboveDenom*denomUsd,2)})
-    &nbsp;|&nbsp;
-    Units sold above: ${fmt(totalAboveUnits,dec)} ${strat.assetSymbol}
-  </div>
-  </div>`;
-
-  html += `<table>
-    <thead>
-      <tr>
-        <th>Band</th>
-        <th>Type</th>
-        <th>Pa</th>
-        <th>Pb</th>
-        <th>Deploy Below (${denomSymbol})</th>
-        <th>Sell Above (Units)</th>
-        <th>Receive Above (${denomSymbol})</th>
-        <th>Source</th>
-      </tr>
-    </thead>
-    <tbody>
-  `;
-  rows.sort((a,b)=>a.pa-b.pa);
-  rows.forEach((r, i)=>{
-    html += `<tr>
-      <td class="mono">${r.bandIdx ?? (i+1)}</td>
-      <td>${r.type}</td>
-      <td class="mono">${fmt(r.pa, dec)}</td>
-      <td class="mono">${fmt(r.pb, dec)}</td>
-      <td class="mono">${r.type==='Below'?fmt(r.deployUSD||0, dec):''}</td>
-      <td class="mono">${r.type==='Above'?fmt(r.altUnitsAbove||0, dec):''}</td>
-      <td class="mono">${r.type==='Above'?fmt(r.deployAltUsd||0, dec):''}</td>
-      <td>${r.sourceTag||''}</td>
-    </tr>`;
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-/* -------------------------
-   Main generate
--------------------------- */
-function generate() {
-  const assetSymbol = document.getElementById('assetSelect').value;
-  const denomSymbol = document.getElementById('denomSelect').value;
-  const denomUsd = Number(document.getElementById('denomUsd').value) || 0;
-
-  const altUsd = Number(document.getElementById('altUsd').value) || 0;
-  const p0 = Number(document.getElementById('p0').value) || 0;
-  const pmin = Number(document.getElementById('pmin').value) || 0;
-  const pmax = Number(document.getElementById('pmax').value) || 0;
-
-  const portfolioSize = Number(document.getElementById('portfolioSize').value) || 0;
-  const currentE = Number(document.getElementById('currentE').value) || 0;
-  const denomCurrentE = Number(document.getElementById('denomCurrentE').value);
-  const denomTargetE = Number(document.getElementById('denomTargetE').value);
-
-  const targetMinPct = Number(document.getElementById('targetMinPct').value) || 0;
-  const targetMaxPct = Number(document.getElementById('targetMaxPct').value) || 0;
-  const stepPct = Number(document.getElementById('intervalPct').value) || 1;
-  const maxBands = Number(document.getElementById('maxBands').value) || 50;
-  const dec = Number(document.getElementById('dec').value) || 6;
-  const capitalRatio = Number(document.getElementById('capitalRatio').value) || 1;
-  const scaleMode = document.getElementById('scaleMode').value;
-  const distMode = document.getElementById('distMode').value;
-  const scheduleMode = document.getElementById('scheduleMode').value;
-
-  if(!(p0>0 && pmin>0 && pmax>0 && pmin<p0 && p0<pmax)){
-    document.getElementById('outArea').innerHTML = `<div class="note">Invalid price inputs. Require Pmin &lt; P₀ &lt; Pmax and all &gt; 0.</div>`;
-    return;
-  }
-
-  // enforce max bands by increasing interval if necessary
-  const tmpBands = buildBands(pmin,pmax,p0,stepPct);
-  if(tmpBands.down.length>maxBands || tmpBands.up.length>maxBands){
-    // we don't auto-adjust, but warn:
-    console.warn("Band count exceeds max; consider increasing interval % or max bands.");
-  }
-
-  const baseParams = { pmin, pmax, p0, stepPct, portfolioSize: portfolioSize * capitalRatio, currentE: currentE * capitalRatio, denomCurrentE: denomCurrentE * capitalRatio, denomTargetE: denomTargetE * capitalRatio, denomSymbol, denomUsd, assetSymbol, scaleMode, distMode };
-
-  const out = document.getElementById('outArea');
-  let html = '';
-
-  if(scheduleMode === 'single'){
-    html += renderLPSection('LP Schedule', baseParams);
-  } else {
-    // Dual: create two strategies. LP1 uses asset/denom, LP2 uses denom/USD side (proxy).
-    const lp2SplitPct = Number(document.getElementById('lp2SplitPct').value)||50;
-    const lp2RangeMult = Number(document.getElementById('lp2RangeMult').value)||1.5;
-    const split = clamp(lp2SplitPct/100, 0, 1);
-
-    // LP1 uses portion (1-split) of portfolio and exposure
-    const lp1Params = { ...baseParams, portfolioSize: baseParams.portfolioSize*(1-split), currentE: baseParams.currentE*(1-split) };
-
-    // LP2 (USD) uses split portion, denom=USD, asset=denomSymbol as numerator (denom/USD)
-    const lp2P0 = denomUsd; // denom/USD
-    const lp2Pmin = denomUsd / lp2RangeMult;
-    const lp2Pmax = denomUsd * lp2RangeMult;
-
-    // For lp2 current exposure, approximate as denomCurrentE*(split) in USD denom.
-    const lp2CurrentE = (Number(document.getElementById('denomCurrentE').value)||0) * denomUsd * split * capitalRatio;
-    const lp2PortfolioSize = (baseParams.portfolioSize * denomUsd) * split; // convert denom to USD
-
-    const lp2Params = {
-      pmin: lp2Pmin,
-      pmax: lp2Pmax,
-      p0: lp2P0,
-      stepPct,
-      portfolioSize: lp2PortfolioSize,
-      currentE: lp2CurrentE,
-      denomSymbol: 'USD',
-      denomUsd: 1, denomCurrentE: NaN, denomTargetE: NaN,
-      assetSymbol: denomSymbol,
-      scaleMode,
-      distMode
-    };
-
-    html += renderLPSection('LP 1 (ALT/' + denomSymbol + ')', lp1Params);
-    html += '<div class="sep"></div>';
-    html += renderLPSection('LP 2 (USD proxy for ' + denomSymbol + ')', lp2Params);
-  }
-
-  out.innerHTML = html;
-}
-
-/* -------------------------
-   Asset config loader (optional)
--------------------------- */
-async function loadAssetList(){
-  try{
-    const data = await fetchJson('/api/config');
-    const assets = data.assets || [];
-    const assetSel = document.getElementById('assetSelect');
-    assetSel.innerHTML = '';
-    assets.forEach(a=>{
-      const opt = document.createElement('option');
-      opt.value = a.symbol;
-      opt.textContent = `${a.symbol} — ${a.name||''}`;
-      assetSel.appendChild(opt);
+    const tr = document.createElement('tr');
+    const cells = [
+      `<span class="mono">${r.band}</span>`,
+      `<span class="mono">${fmt(r.pa, 10)} → ${fmt(r.pb, 10)}</span>`,
+      r.type,
+      `<span class="mono">${fmt(r.type==="↓"?r.deployDenom:r.altUnits, dec)} ${r.type==="↓"?denom:alt}</span>`,
+      `<span class="mono">$${fmt(r.deployUsd, 2)}</span>`,
+      `<span class="mono">${fmt(r.altUnits, dec)} ${alt}</span>`,
+      `<span class="mono">${fmt(r.netAtBoundary, dec)} ${denom}</span>`,
+      r.sourceHtml || ''
+    ];
+    cells.forEach(html=>{
+      const td = document.createElement('td');
+      td.innerHTML = html;
+      tr.appendChild(td);
     });
-    if(assets.length){
-      assetSel.value = assets[0].symbol;
-      await loadAssetConfig(assetSel.value);
-    }
-  }catch(err){
-    console.warn("Config load failed; using fallback list.", err);
-    const fallback = ['LTC','ETH','SOL','AVAX','BNB','XRP','DOGE','LINK'];
-    const assetSel = document.getElementById('assetSelect');
-    assetSel.innerHTML = '';
-    fallback.forEach(s=>{
-      const opt=document.createElement('option');
-      opt.value=s; opt.textContent=s;
-      assetSel.appendChild(opt);
-    });
-    assetSel.value = fallback[0];
+    tbody.appendChild(tr);
+    shown++;
+  }
+
+  document.getElementById('pillBands').textContent = `${shown} rows`;
+  document.getElementById('pillMode').textContent = document.getElementById('distMode').value === 'univ3' ? 'UniV3' : 'Linear';
+
+  // KPIs
+  document.getElementById('kAltAbove').textContent = fmt(result.totals.altAboveUnits, 6);
+  document.getElementById('kUsdAbove').textContent = `$${fmt(result.totals.usdAbove, 2)}`;
+  document.getElementById('kDenomBelow').textContent = fmt(result.totals.denomBelow, 6);
+  document.getElementById('kUsdBelow').textContent = `$${fmt(result.totals.usdBelow, 2)}`;
+
+  // Show budget / residuals in helper lines
+  const curHelp = document.getElementById('currentEHelp');
+  if(curHelp){
+    const msg = `Below spend capped by denom budget: ${fmt(result.totals.denomBudget, 6)} ${getDenomSym()} (used: ${fmt(result.totals.belowQuoteUsed, 6)})`;
+    curHelp.textContent = msg;
+    curHelp.style.color = 'var(--muted)';
   }
 }
 
-async function loadAssetConfig(sym){
+/* ==========
+   BUTTON HANDLERS
+   ========== */
+function handleGenerateSchedules(){
   try{
-    const cfg = await fetchJson('/api/config');
-    const a = (cfg.assets||[]).find(x=>x.symbol===sym);
-    if(!a) return;
-
-    // set defaults from config if present
-    if(a.defaultPmin) document.getElementById('pmin').value = a.defaultPmin;
-    if(a.defaultPmax) document.getElementById('pmax').value = a.defaultPmax;
-    if(a.defaultPortfolioSize) document.getElementById('portfolioSize').value = a.defaultPortfolioSize;
-    if(a.defaultTargetMinPct!=null) document.getElementById('targetMinPct').value = a.defaultTargetMinPct;
-    if(a.defaultTargetMaxPct!=null) document.getElementById('targetMaxPct').value = a.defaultTargetMaxPct;
-    if(a.defaultIntervalPct!=null) document.getElementById('intervalPct').value = a.defaultIntervalPct;
-    if(a.defaultScaleMode) document.getElementById('scaleMode').value = a.defaultScaleMode;
-
-    // prices
-    const denom = document.getElementById('denomSelect').value;
-    await autoFetchPrices(sym, denom);
-
-    // if config includes P0 override
-    if(a.defaultP0) document.getElementById('p0').value = a.defaultP0;
-
-    updateAutoTargets();
-    triggerAutoFetch();
-    fetchLiveExposure();
-    generate();
+    syncDenomLabels();
+    syncKpiSyms();
+    updateTargetsFromPct();
+    updateP0();
+    const res = computeSchedule();
+    renderSchedule(res);
   }catch(err){
-    console.warn("Asset config load failed", err);
+    console.error(err);
+    alert(err.message);
   }
 }
 
-/* -------------------------
-   Init
--------------------------- */
-(function init(){
-  const assetSel = document.getElementById('assetSelect');
-  const denomSel = document.getElementById('denomSelect');
-  const btnFetch = document.getElementById('btnFetch');
-  const btnAuto = document.getElementById('btnAutoPrices');
-  const btnGen = document.getElementById('btnGen');
-  const btnClear = document.getElementById('btnClear');
+function handleGenerateExposure(){
+  // Placeholder hook (your repo had separate tabs; keeping minimal)
+  handleGenerateSchedules();
+}
+function handleGeneratePnl(){
+  // Placeholder hook
+  handleGenerateSchedules();
+}
 
-  const altUsdEl = document.getElementById('altUsd');
-  const denomUsdEl = document.getElementById('denomUsd');
-  const p0El = document.getElementById('p0');
+function clearTables(){
+  document.querySelector('#tblSchedule tbody').innerHTML = '';
+  ['kAltAbove','kUsdAbove','kDenomBelow','kUsdBelow'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('pillBands').textContent = '0 bands';
+  document.getElementById('pillMode').textContent = '—';
+}
 
-  btnFetch.addEventListener('click', fetchLiveExposure);
-  btnAuto.addEventListener('click', ()=>autoFetchPrices(assetSel.value, denomSel.value));
-  btnGen.addEventListener('click', generate);
-  btnClear.addEventListener('click', ()=>{ document.getElementById('outArea').innerHTML = `<div class="note">Cleared.</div>`; });
+/* ==========
+   CAPTURE A/B (placeholder for your optimizer flow)
+   ========== */
+function captureBase(){
+  state.capturedA = {
+    alt: getAltSym(),
+    denom: getDenomSym(),
+    p0: safeNum(document.getElementById('p0').value,0),
+    pmin: safeNum(document.getElementById('pmin').value,0),
+    pmax: safeNum(document.getElementById('pmax').value,0),
+    currentE: safeNum(document.getElementById('currentE').value,0)
+  };
+  alert('Captured Base (A)');
+}
+function captureQuote(){
+  state.capturedB = {
+    alt: getAltSym(),
+    denom: getDenomSym(),
+    p0: safeNum(document.getElementById('p0').value,0),
+    pmin: safeNum(document.getElementById('pmin').value,0),
+    pmax: safeNum(document.getElementById('pmax').value,0),
+    currentE: safeNum(document.getElementById('currentE').value,0)
+  };
+  alert('Captured Quote (B)');
+}
 
-  altUsdEl.addEventListener('input', updateP0FromUsd);
-  denomUsdEl.addEventListener('input', updateP0FromUsd);
-  p0El.addEventListener('input', updateUsdFromP0);
-
-  assetSel.addEventListener('change', () => {
-      loadAssetConfig(assetSel.value);
-      updateDenomLabels(denomSel.value);
+/* ==========
+   EVENTS
+   ========== */
+function wireEvents(){
+  document.getElementById('tabSingle').addEventListener('click', ()=>{
+    document.getElementById('tabSingle').classList.add('active');
+    document.getElementById('tabCross').classList.remove('active');
+    document.getElementById('viewSingle').style.display='';
+    document.getElementById('viewCross').style.display='none';
   });
-  denomSel.addEventListener('change', () => {
-      updateDenomLabels(denomSel.value);
-      updateTargetAtP0();
-      autoFetchPrices(assetSel ? assetSel.value : '', denomSel.value);
+  document.getElementById('tabCross').addEventListener('click', ()=>{
+    document.getElementById('tabCross').classList.add('active');
+    document.getElementById('tabSingle').classList.remove('active');
+    document.getElementById('viewSingle').style.display='none';
+    document.getElementById('viewCross').style.display='';
   });
 
-  // Auto target updates when inputs change
-  ['portfolioSize', 'targetMinPct', 'targetMaxPct'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.addEventListener('input', updateAutoTargets);
+  document.getElementById('altSelect').addEventListener('change', async ()=>{
+    await applySelectedAssetParams();
+    await fetchPricesBestEffort();
+    await fetchExposures();
+    syncKpiSyms();
+    handleGenerateSchedules();
   });
-  const denomTargetEl = document.getElementById('denomTargetE');
-  if(denomTargetEl) denomTargetEl.addEventListener('input', updateDenomDelta);
-  const distModeEl = document.getElementById('distMode');
-  if(distModeEl) distModeEl.addEventListener('change', updateAutoTargets);
-  ['pmin', 'pmax'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.addEventListener('input', updateAutoTargets);
+  document.getElementById('denomSelect').addEventListener('change', async ()=>{
+    syncDenomLabels();
+    await applySelectedAssetParams(); // may reset denom to config denom
+    await fetchPricesBestEffort();
+    await fetchExposures();
+    handleGenerateSchedules();
   });
 
-  // initial setup
-  updateDenomLabels(denomSel.value);
-  loadAssetList();
-  autoFetchPrices('', denomSel.value);
+  ['altUsd','denomUsd'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', ()=>{
+      updateP0();
+      handleGenerateSchedules();
+    });
+  });
+
+  ['pmin','pmax','portfolioSize','targetMinPct','targetMaxPct','currentE','intervalPct','dec'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', ()=>{
+      updateTargetsFromPct();
+      handleGenerateSchedules();
+    });
+  });
+
+  document.getElementById('denomTargetE').addEventListener('input', ()=>{
+    updateDenomDelta();
+    handleGenerateSchedules();
+  });
+
+  document.getElementById('distMode').addEventListener('change', handleGenerateSchedules);
+  document.getElementById('scaleMode').addEventListener('change', handleGenerateSchedules);
+  document.getElementById('showZeros').addEventListener('change', handleGenerateSchedules);
+
+  document.getElementById('btnSched').addEventListener('click', handleGenerateSchedules);
+  document.getElementById('btnExpo').addEventListener('click', handleGenerateExposure);
+  document.getElementById('btnPnl').addEventListener('click', handleGeneratePnl);
+  document.getElementById('btnCaptureA').addEventListener('click', captureBase);
+  document.getElementById('btnCaptureB').addEventListener('click', captureQuote);
+  document.getElementById('btnClear').addEventListener('click', clearTables);
+}
+
+/* ==========
+   INIT
+   ========== */
+(async function init(){
+  wireEvents();
+  await loadAssetsFromSheets();
 })();
 </script>
 </body>
